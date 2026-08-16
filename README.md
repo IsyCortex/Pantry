@@ -19,9 +19,9 @@ No AI-generated proposal becomes inventory without explicit human confirmation.
 | Document | Purpose |
 | --- | --- |
 | [Project plan](PROJECT_PLAN.md) | Milestones, tickets, acceptance criteria, and technical progress checklists |
-| [Product scope](docs/product-scope.md) | Product goal, users, workflows, MVP boundary, and success criteria |
+| [Product scope](docs/product-scope.md) | Product goal, users, workflows, MVP boundary, success criteria, and scope acceptance |
 | [Domain model](docs/domain-model.md) | Domain language, entities, lifecycle rules, and validation invariants |
-| [Architecture](docs/architecture.md) | Application structure, technical boundaries, persistence, and testing strategy |
+| [Architecture](docs/architecture.md) | Application structure, technical boundaries, persistence, testing strategy, and release workflow constraints |
 | [Input pipeline](docs/input-pipeline.md) | Manual and AI-assisted batch ingestion, review boundary, and future voice/receipt adapters |
 
 ## Documentation strategy
@@ -35,6 +35,13 @@ The documentation is intentionally split rather than maintained as one large fil
 - The input pipeline deserves a dedicated document because it is the main extensibility and AI-safety boundary.
 
 Architectural decisions that require trade-off records should later be added as individual ADRs under `docs/adr/`. An engineering log should be introduced when implementation begins and updated alongside ticket progress.
+
+## Delivery workflow
+
+- Ticket execution follows the technical ticket-state workflow documented in the [project plan](PROJECT_PLAN.md#ticket-workflow-states).
+- The implementation partner maintains only `Technical plan and progress` checkboxes and never checks acceptance criteria without explicit instruction.
+- Product acceptance and movement to `Done` remain the project owner's responsibility.
+- Each milestone is treated as a release and follows the Gitflow release responsibilities documented in the [project plan](PROJECT_PLAN.md#release-and-gitflow-responsibilities).
 
 ## Current status
 

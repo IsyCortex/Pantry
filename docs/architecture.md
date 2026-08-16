@@ -191,3 +191,10 @@ The final MVP test should begin with an empty database and cover manual intake, 
 - Maintain `docs/engineering-log.md` concurrently with development.
 - Add one ADR per significant accepted trade-off.
 - Keep setup, test, and demo instructions in the root README once implementation begins.
+
+## Repository workflow and release boundaries
+
+- Supporting product and technical documents belong under `docs/`.
+- Ticket-state rules, acceptance boundaries, and release approvals are defined in `PROJECT_PLAN.md` and govern day-to-day technical execution.
+- Each milestone is treated as a release candidate, but no release branch preparation, merge, tag, publication, or milestone closure occurs without explicit project-owner authorization.
+- Gitflow release execution follows this sequence after approval: prepare the release, merge into `main` with an explicit merge commit, create an annotated version tag, merge back into `develop`, and publish a GitHub Release.

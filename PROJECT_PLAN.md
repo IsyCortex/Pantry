@@ -4,11 +4,52 @@
 
 - Work proceeds through milestones containing small, reviewable tickets.
 - Every ticket has acceptance criteria and a technical plan/progress checklist.
+- Unless explicitly requested by the product owner, acceptance-criteria checkboxes are not edited or checked by the implementation partner; acceptance testing remains human-owned.
 - Product scope and acceptance remain human-owned.
 - The implementation partner inspects and reports before changing code.
 - Automated tests use deterministic providers; live-model evaluation is separate.
 - Product definitions belong in tickets and documentation. Implementation evidence and deviations are recorded in ticket progress and the engineering log.
 - A ticket is complete only when its acceptance criteria have evidence and its documentation is current.
+
+## Ticket workflow states
+
+- `Todo`: the ticket exists and has not been started.
+- `In Progress`: the implementation partner is actively working the ticket after explicit instruction from the product owner to begin.
+- `Blocked`: technical work cannot continue; the exact blocker and required next action must be recorded in the issue.
+- `Ready for Acceptance`: all technical-plan items are complete, required verification has passed, and an acceptance handoff with supporting evidence has been recorded in the issue.
+- `Done`: the product owner has tested the ticket against its acceptance criteria, accepted it, and finalized the work.
+
+## Ticket-state responsibilities
+
+- The implementation partner manages technical ticket-state transitions into `In Progress`, `Blocked`, and `Ready for Acceptance`.
+- The implementation partner maintains only the `Technical plan and progress` checkboxes and checks an item only when repository evidence demonstrates completion.
+- The implementation partner records relevant files, commits, tests, decisions, and blockers in the GitHub issue.
+- If work cannot continue, the implementation partner moves the ticket to `Blocked` and records the exact blocker and required next action.
+- When technical work and required verification are complete, the implementation partner moves the ticket to `Ready for Acceptance` and provides an acceptance handoff summarizing evidence for each acceptance criterion.
+- The implementation partner never checks acceptance-criteria boxes, moves a ticket to `Done`, closes an issue, or closes a milestone unless explicitly instructed.
+- Product acceptance, movement to `Done`, and final completion remain the responsibility of the product owner.
+
+## Release and Gitflow responsibilities
+
+- Each milestone is treated as a release.
+- Release preparation begins only after every ticket in the milestone has been accepted and moved to `Done`, and the product owner explicitly authorizes release preparation.
+- During release preparation, the implementation partner verifies milestone tickets, repository state, tests, documentation, and version.
+- The implementation partner prepares the proposed release version, functional release summary, included-ticket list, verification evidence, changelog, annotated tag, and GitHub Release materials.
+- Release commit messages identify the Pantry version and milestone and describe delivered functionality in user-facing or system-behavior terms rather than merely listing files or implementation tasks.
+- Before merges, tagging, release publication, version changes, or milestone closure, the implementation partner presents the proposed version, included tickets, test evidence, release commit message, and release notes for explicit project-owner approval.
+- The implementation partner must not merge into `main` or `develop`, create a tag, publish a GitHub Release, begin release publication, or close a milestone without explicit project-owner approval.
+
+## Gitflow release sequence
+
+1. Complete milestone tickets and move them to `Done` through owner acceptance.
+2. Receive explicit authorization to begin release preparation.
+3. Prepare the release version, release commit, functional release notes, included-ticket list, and verification evidence on the authorized release branch.
+4. Present the full release package for project-owner approval before any merge, tag, publication, or milestone closure.
+5. Merge the approved release into `main` with an explicit merge commit.
+6. Create an annotated version tag from the approved release state.
+7. Merge the release back into `develop`.
+8. Publish the GitHub Release from the approved release notes.
+9. Close the milestone only after explicit project-owner approval.
 
 ## MVP path
 
@@ -35,14 +76,14 @@
 
 ### Technical plan and progress
 
-- [ ] Define the primary household scenario
-- [ ] Document initial inventory onboarding
-- [ ] Document weekly grocery intake
-- [ ] Document occasional single-item entry
-- [ ] Document inventory review and removal
-- [ ] Define draft, review, confirmation, and inventory boundaries
-- [ ] Record MVP exclusions
-- [ ] Review and accept the product scope
+- [x] Define the primary household scenario
+- [x] Document initial inventory onboarding
+- [x] Document weekly grocery intake
+- [x] Document occasional single-item entry
+- [x] Document inventory review and removal
+- [x] Define draft, review, confirmation, and inventory boundaries
+- [x] Record MVP exclusions
+- [x] Review and accept the product scope
 
 ## Ticket 0.2 — Define the Pantry domain model
 
@@ -88,6 +129,7 @@
 - [ ] Define transaction ownership
 - [ ] Define provider configuration
 - [ ] Define error categories
+- [x] Define repository workflow and release boundaries
 - [ ] Create architecture ADR
 - [ ] Create human-review-boundary ADR
 - [ ] Create input-pipeline ADR
