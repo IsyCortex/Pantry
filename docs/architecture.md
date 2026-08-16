@@ -192,6 +192,12 @@ The final MVP test should begin with an empty database and cover manual intake, 
 - Add one ADR per significant accepted trade-off.
 - Keep setup, test, and demo instructions in the root README once implementation begins.
 
+Current ADR set:
+
+- [ADR 0001: Application Stack](adr/0001-application-stack.md)
+- [ADR 0002: Human Review Boundary](adr/0002-human-review-boundary.md)
+- [ADR 0003: Canonical Input Pipeline](adr/0003-canonical-input-pipeline.md)
+
 ## Repository workflow and release boundaries
 
 - Supporting product and technical documents belong under `docs/`.
