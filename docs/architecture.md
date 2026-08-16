@@ -112,6 +112,8 @@ analyze({
 
 The model receives controlled context. Relative dates must not depend on the model host's clock or timezone.
 
+The single authoritative analyzer contract source is [`docs/analyzer-contract.md`](analyzer-contract.md).
+
 ## Persistence boundary
 
 The application persists a proposal as an intake batch under review. It creates inventory only through the confirmation service.

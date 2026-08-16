@@ -4,6 +4,8 @@
 
 Pantry minimizes grocery-entry friction while keeping confirmed inventory accurate. All input methods create an editable intake batch. They never write inventory directly.
 
+The single authoritative analyzer contract source is [`docs/analyzer-contract.md`](analyzer-contract.md).
+
 ## Pipeline stages
 
 ```text
@@ -78,6 +80,8 @@ The analyzer must not:
 - Dates must be valid ISO calendar dates or `null`.
 - Missing values remain `null`.
 - One invalid item rejects the proposal; items are not silently discarded.
+
+Executable enforcement of these rules is implemented later in Ticket 2.3. This ticket defines the authoritative specification in [`docs/analyzer-contract.md`](analyzer-contract.md).
 
 ## Review behavior
 

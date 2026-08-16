@@ -1,0 +1,14 @@
+{
+  "items": [
+    {
+      "name": "milk",
+      "quantity": 2,
+      "unit": "package",
+      "location": "fridge",
+      "expirationDate": null,
+      "dateType": null,
+      "attentionReasons": [],
+      "confidence": 0.98
+    }
+  ]
+}
