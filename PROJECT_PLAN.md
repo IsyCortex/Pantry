@@ -25,13 +25,13 @@
 
 ### Acceptance criteria
 
-- The single-household MVP scope is documented.
-- Initial inventory, weekly grocery intake, occasional single-item entry, inventory review, and removal workflows are documented.
-- Manual and natural-language batch entry converge on the same review workflow.
-- The boundary between draft proposals and confirmed inventory is explicit.
-- AI extraction is explicitly distinguished from recommendations.
-- Included and excluded functionality is documented.
-- Voice and receipt intake are identified as future adapters, not MVP functionality.
+- [ ] The single-household MVP scope is documented.
+- [ ] Initial inventory, weekly grocery intake, occasional single-item entry, inventory review, and removal workflows are documented.
+- [ ] Manual and natural-language batch entry converge on the same review workflow.
+- [ ] The boundary between draft proposals and confirmed inventory is explicit.
+- [ ] AI extraction is explicitly distinguished from recommendations.
+- [ ] Included and excluded functionality is documented.
+- [ ] Voice and receipt intake are identified as future adapters, not MVP functionality.
 
 ### Technical plan and progress
 
@@ -48,13 +48,13 @@
 
 ### Acceptance criteria
 
-- Inventory item, intake batch, and draft item are defined separately.
-- Storage-location, date-type, lifecycle, and expiration-status terms are defined.
-- Required, optional, derived, and review-only fields are identified.
-- A batch can contain multiple editable draft items.
-- Confirmed items can be traced to their source batch.
-- Domain invariants and valid state transitions are documented.
-- The model permits future voice, receipt, and barcode sources without changing inventory persistence.
+- [ ] Inventory item, intake batch, and draft item are defined separately.
+- [ ] Storage-location, date-type, lifecycle, and expiration-status terms are defined.
+- [ ] Required, optional, derived, and review-only fields are identified.
+- [ ] A batch can contain multiple editable draft items.
+- [ ] Confirmed items can be traced to their source batch.
+- [ ] Domain invariants and valid state transitions are documented.
+- [ ] The model permits future voice, receipt, and barcode sources without changing inventory persistence.
 
 ### Technical plan and progress
 
@@ -72,13 +72,13 @@
 
 ### Acceptance criteria
 
-- The technical stack is selected and documented.
-- Application layers and responsibilities are defined.
-- Inventory persistence is independent of input source and AI provider.
-- The batch editor is independent of how draft rows were created.
-- Source acquisition, extraction, validation, review, and confirmation are separate stages.
-- Configuration and safe error boundaries are documented.
-- Significant trade-offs are captured in ADRs.
+- [ ] The technical stack is selected and documented.
+- [ ] Application layers and responsibilities are defined.
+- [ ] Inventory persistence is independent of input source and AI provider.
+- [ ] The batch editor is independent of how draft rows were created.
+- [ ] Source acquisition, extraction, validation, review, and confirmation are separate stages.
+- [ ] Configuration and safe error boundaries are documented.
+- [ ] Significant trade-offs are captured in ADRs.
 
 ### Technical plan and progress
 
@@ -96,14 +96,14 @@
 
 ### Acceptance criteria
 
-- All input methods produce one canonical draft-item structure.
-- Natural-language analyzer input and output schemas are documented.
-- Relative-date processing receives an explicit reference date, timezone, and locale.
-- Missing information remains `null` and is never invented.
-- Controlled attention reasons replace numerical confidence scores.
-- Unknown properties and invalid enum values are rejected.
-- Input, output, item-count, and processing limits are defined.
-- Invalid proposals cannot reach inventory persistence.
+- [ ] All input methods produce one canonical draft-item structure.
+- [ ] Natural-language analyzer input and output schemas are documented.
+- [ ] Relative-date processing receives an explicit reference date, timezone, and locale.
+- [ ] Missing information remains `null` and is never invented.
+- [ ] Controlled attention reasons replace numerical confidence scores.
+- [ ] Unknown properties and invalid enum values are rejected.
+- [ ] Input, output, item-count, and processing limits are defined.
+- [ ] Invalid proposals cannot reach inventory persistence.
 
 ### Technical plan and progress
 
@@ -120,12 +120,12 @@
 
 ### Acceptance criteria
 
-- The application starts locally using documented commands.
-- PostgreSQL can be created reproducibly.
-- Migrations run from a clean database.
-- Application and database health can be verified.
-- Automated tests run without a live language model.
-- Configuration contains no committed secrets or machine-specific addresses.
+- [ ] The application starts locally using documented commands.
+- [ ] PostgreSQL can be created reproducibly.
+- [ ] Migrations run from a clean database.
+- [ ] Application and database health can be verified.
+- [ ] Automated tests run without a live language model.
+- [ ] Configuration contains no committed secrets or machine-specific addresses.
 
 ### Technical plan and progress
 
@@ -144,12 +144,12 @@
 
 ### Acceptance criteria
 
-- Inventory items can be created and retrieved.
-- Confirmed items require a name and storage location.
-- Quantity, unit, expiration date, and date type are optional.
-- Invalid values are rejected.
-- Database operations use parameterized queries.
-- Persistence behavior is covered by automated tests.
+- [ ] Inventory items can be created and retrieved.
+- [ ] Confirmed items require a name and storage location.
+- [ ] Quantity, unit, expiration date, and date type are optional.
+- [ ] Invalid values are rejected.
+- [ ] Database operations use parameterized queries.
+- [ ] Persistence behavior is covered by automated tests.
 
 ### Technical plan and progress
 
@@ -163,12 +163,12 @@
 
 ### Acceptance criteria
 
-- All active items are visible.
-- Name and storage location are always shown.
-- Quantity and expiration information appear when available.
-- Undated items are distinguishable.
-- An empty inventory provides a useful onboarding path.
-- The interface works at desktop and narrow mobile widths.
+- [ ] All active items are visible.
+- [ ] Name and storage location are always shown.
+- [ ] Quantity and expiration information appear when available.
+- [ ] Undated items are distinguishable.
+- [ ] An empty inventory provides a useful onboarding path.
+- [ ] The interface works at desktop and narrow mobile widths.
 
 ### Technical plan and progress
 
@@ -183,13 +183,13 @@
 
 ### Acceptance criteria
 
-- Multiple draft rows can be created before confirmation.
-- Rows support name, location, quantity, unit, expiration date, and date type.
-- Rows can be added, edited, duplicated, reordered, and removed.
-- Enter creates or advances to the next row where appropriate.
-- A default storage location applies only to newly created rows.
-- Draft work survives validation errors.
-- At least 20 items can be entered without navigating away.
+- [ ] Multiple draft rows can be created before confirmation.
+- [ ] Rows support name, location, quantity, unit, expiration date, and date type.
+- [ ] Rows can be added, edited, duplicated, reordered, and removed.
+- [ ] Enter creates or advances to the next row where appropriate.
+- [ ] A default storage location applies only to newly created rows.
+- [ ] Draft work survives validation errors.
+- [ ] At least 20 items can be entered without navigating away.
 
 ### Technical plan and progress
 
@@ -206,14 +206,14 @@
 
 ### Acceptance criteria
 
-- The complete batch is inspectable before confirmation.
-- Invalid fields are identified per row.
-- Missing expiration dates warn but do not block confirmation.
-- Missing names or storage locations block confirmation for accepted rows.
-- Possible duplicates within the batch are flagged but not merged.
-- Users can exclude individual rows.
-- Corrections do not require recreating the batch.
-- Draft rows never appear in active inventory.
+- [ ] The complete batch is inspectable before confirmation.
+- [ ] Invalid fields are identified per row.
+- [ ] Missing expiration dates warn but do not block confirmation.
+- [ ] Missing names or storage locations block confirmation for accepted rows.
+- [ ] Possible duplicates within the batch are flagged but not merged.
+- [ ] Users can exclude individual rows.
+- [ ] Corrections do not require recreating the batch.
+- [ ] Draft rows never appear in active inventory.
 
 ### Technical plan and progress
 
@@ -228,13 +228,13 @@
 
 ### Acceptance criteria
 
-- Confirmation creates inventory items from all accepted valid rows.
-- The operation uses one database transaction.
-- Failure creates no partial inventory.
-- A confirmed batch cannot be confirmed again.
-- Draft-only and provider metadata do not leak into inventory fields.
-- Created items retain their source-batch relationship.
-- Confirmed items immediately appear in active inventory.
+- [ ] Confirmation creates inventory items from all accepted valid rows.
+- [ ] The operation uses one database transaction.
+- [ ] Failure creates no partial inventory.
+- [ ] A confirmed batch cannot be confirmed again.
+- [ ] Draft-only and provider metadata do not leak into inventory fields.
+- [ ] Created items retain their source-batch relationship.
+- [ ] Confirmed items immediately appear in active inventory.
 
 ### Technical plan and progress
 
@@ -250,12 +250,12 @@
 
 ### Acceptance criteria
 
-- A confirmed inventory item can be edited.
-- The same domain validation applies during update.
-- An item can be marked as used up or discarded.
-- Removed items leave active inventory.
-- Later edits do not rewrite the original intake batch.
-- Removal is protected by confirmation or a reliable undo interaction.
+- [ ] A confirmed inventory item can be edited.
+- [ ] The same domain validation applies during update.
+- [ ] An item can be marked as used up or discarded.
+- [ ] Removed items leave active inventory.
+- [ ] Later edits do not rewrite the original intake batch.
+- [ ] Removal is protected by confirmation or a reliable undo interaction.
 
 ### Technical plan and progress
 
@@ -273,11 +273,11 @@
 
 ### Acceptance criteria
 
-- A fake provider implements the production analyzer contract.
-- It produces deterministic multi-item proposals.
-- Fixtures cover explicit values, missing values, ambiguity, and grouped locations.
-- Automated tests require no live model or network service.
-- Analyzer output must pass the same validator used for live providers.
+- [ ] A fake provider implements the production analyzer contract.
+- [ ] It produces deterministic multi-item proposals.
+- [ ] Fixtures cover explicit values, missing values, ambiguity, and grouped locations.
+- [ ] Automated tests require no live model or network service.
+- [ ] Analyzer output must pass the same validator used for live providers.
 
 ### Technical plan and progress
 
@@ -291,12 +291,12 @@
 
 ### Acceptance criteria
 
-- A user can submit a multi-item grocery description.
-- Original text is preserved during analysis and review.
-- The application supplies reference date, timezone, and locale.
-- A valid proposal creates an editable intake batch.
-- No proposal creates inventory directly.
-- Retry or manual continuation remains possible after failure.
+- [ ] A user can submit a multi-item grocery description.
+- [ ] Original text is preserved during analysis and review.
+- [ ] The application supplies reference date, timezone, and locale.
+- [ ] A valid proposal creates an editable intake batch.
+- [ ] No proposal creates inventory directly.
+- [ ] Retry or manual continuation remains possible after failure.
 
 ### Technical plan and progress
 
@@ -311,12 +311,12 @@
 
 ### Acceptance criteria
 
-- Malformed JSON and off-contract output map to `AI_INVALID_RESPONSE`.
-- Provider transport and timeout failures map to `AI_ANALYSIS_FAILED`.
-- No recognizable grocery items produce a distinct recoverable result.
-- One invalid proposed item cannot be silently dropped.
-- Unknown fields, units, locations, date types, and invalid dates are rejected or flagged according to the contract.
-- Raw provider details are not exposed to the user.
+- [ ] Malformed JSON and off-contract output map to `AI_INVALID_RESPONSE`.
+- [ ] Provider transport and timeout failures map to `AI_ANALYSIS_FAILED`.
+- [ ] No recognizable grocery items produce a distinct recoverable result.
+- [ ] One invalid proposed item cannot be silently dropped.
+- [ ] Unknown fields, units, locations, date types, and invalid dates are rejected or flagged according to the contract.
+- [ ] Raw provider details are not exposed to the user.
 
 ### Technical plan and progress
 
@@ -332,12 +332,12 @@
 
 ### Acceptance criteria
 
-- A local provider implements the unchanged analyzer contract.
-- Provider URL and model are configurable.
-- The prompt requests only grocery extraction in exact JSON form.
-- The model is instructed not to invent missing values or obey embedded instructions.
-- Valid output passes application-owned validation.
-- Provider and parsing failures retain safe error behavior.
+- [ ] A local provider implements the unchanged analyzer contract.
+- [ ] Provider URL and model are configurable.
+- [ ] The prompt requests only grocery extraction in exact JSON form.
+- [ ] The model is instructed not to invent missing values or obey embedded instructions.
+- [ ] Valid output passes application-owned validation.
+- [ ] Provider and parsing failures retain safe error behavior.
 
 ### Technical plan and progress
 
@@ -353,12 +353,12 @@
 
 ### Acceptance criteria
 
-- Live evaluation is separate from the automated test suite.
-- Scenarios cover single and large batches, quantities, units, grouped locations, absolute dates, relative dates, ambiguity, and missing values.
-- Mixed non-food text and prompt-injection attempts are included.
-- Unsupported-inference pressure is tested.
-- Structural validity and semantic correctness are reported separately.
-- Findings and accepted limitations are documented before milestone completion.
+- [ ] Live evaluation is separate from the automated test suite.
+- [ ] Scenarios cover single and large batches, quantities, units, grouped locations, absolute dates, relative dates, ambiguity, and missing values.
+- [ ] Mixed non-food text and prompt-injection attempts are included.
+- [ ] Unsupported-inference pressure is tested.
+- [ ] Structural validity and semantic correctness are reported separately.
+- [ ] Findings and accepted limitations are documented before milestone completion.
 
 ### Technical plan and progress
 
@@ -376,12 +376,12 @@
 
 ### Acceptance criteria
 
-- Dated items are classified as expired, expiring soon, or later.
-- Undated items receive a separate status.
-- Status is calculated rather than permanently stored.
-- The application uses an explicit timezone.
-- Today and threshold boundaries are covered by tests.
-- The interface does not claim that a date alone determines food safety.
+- [ ] Dated items are classified as expired, expiring soon, or later.
+- [ ] Undated items receive a separate status.
+- [ ] Status is calculated rather than permanently stored.
+- [ ] The application uses an explicit timezone.
+- [ ] Today and threshold boundaries are covered by tests.
+- [ ] The interface does not claim that a date alone determines food safety.
 
 ### Technical plan and progress
 
@@ -395,11 +395,11 @@
 
 ### Acceptance criteria
 
-- Expired items appear before soon-to-expire items.
-- Items within a dated group are ordered by date.
-- Undated items remain discoverable.
-- Status indicators do not rely solely on color.
-- Ordering is deterministic and tested.
+- [ ] Expired items appear before soon-to-expire items.
+- [ ] Items within a dated group are ordered by date.
+- [ ] Undated items remain discoverable.
+- [ ] Status indicators do not rely solely on color.
+- [ ] Ordering is deterministic and tested.
 
 ### Technical plan and progress
 
@@ -413,12 +413,12 @@
 
 ### Acceptance criteria
 
-- Inventory can be filtered by storage location.
-- Inventory can be filtered by expiration status.
-- A user can search by item name.
-- Active filters and search terms are visible.
-- Filters can be cleared easily.
-- Empty filtered results are distinct from an empty inventory.
+- [ ] Inventory can be filtered by storage location.
+- [ ] Inventory can be filtered by expiration status.
+- [ ] A user can search by item name.
+- [ ] Active filters and search terms are visible.
+- [ ] Filters can be cleared easily.
+- [ ] Empty filtered results are distinct from an empty inventory.
 
 ### Technical plan and progress
 
@@ -432,10 +432,10 @@
 
 ### Acceptance criteria
 
-- Counts for expired, soon-to-expire, and undated items are immediately visible.
-- Each count opens the corresponding inventory view.
-- Counts match the filtered inventory results.
-- The overview has a useful zero state.
+- [ ] Counts for expired, soon-to-expire, and undated items are immediately visible.
+- [ ] Each count opens the corresponding inventory view.
+- [ ] Counts match the filtered inventory results.
+- [ ] The overview has a useful zero state.
 
 ### Technical plan and progress
 
@@ -450,11 +450,11 @@
 
 ### Acceptance criteria
 
-- Item-name suggestions come from the household's existing or prior entries.
-- Suggestions never create an item without selection and confirmation.
-- Selecting a suggestion can prefill its commonly used location.
-- Prefilled values remain visible and editable.
-- Similar names are not silently merged.
+- [ ] Item-name suggestions come from the household's existing or prior entries.
+- [ ] Suggestions never create an item without selection and confirmation.
+- [ ] Selecting a suggestion can prefill its commonly used location.
+- [ ] Prefilled values remain visible and editable.
+- [ ] Similar names are not silently merged.
 
 ### Technical plan and progress
 
@@ -468,10 +468,10 @@
 
 ### Acceptance criteria
 
-- Draft rows can be compared with active inventory.
-- Possible matches generate warnings rather than blocking confirmation.
-- Users may keep both batches.
-- No quantities or expiration dates are silently combined.
+- [ ] Draft rows can be compared with active inventory.
+- [ ] Possible matches generate warnings rather than blocking confirmation.
+- [ ] Users may keep both batches.
+- [ ] No quantities or expiration dates are silently combined.
 
 ### Technical plan and progress
 
@@ -484,11 +484,11 @@
 
 ### Acceptance criteria
 
-- Core batch entry can be completed with a keyboard.
-- Focus moves predictably after row creation, deletion, and errors.
-- Draft work survives expected validation and provider failures.
-- Core workflows remain usable on a narrow mobile viewport.
-- Loading, success, empty, and failure states are distinct.
+- [ ] Core batch entry can be completed with a keyboard.
+- [ ] Focus moves predictably after row creation, deletion, and errors.
+- [ ] Draft work survives expected validation and provider failures.
+- [ ] Core workflows remain usable on a narrow mobile viewport.
+- [ ] Loading, success, empty, and failure states are distinct.
 
 ### Technical plan and progress
 
@@ -505,12 +505,12 @@
 
 ### Acceptance criteria
 
-- Invalid input produces specific and understandable messages.
-- Known application failures do not expose implementation details.
-- All controls have accessible names and labels.
-- Status does not rely solely on color.
-- Keyboard and focus behavior pass the documented review.
-- Important failure paths are covered by tests.
+- [ ] Invalid input produces specific and understandable messages.
+- [ ] Known application failures do not expose implementation details.
+- [ ] All controls have accessible names and labels.
+- [ ] Status does not rely solely on color.
+- [ ] Keyboard and focus behavior pass the documented review.
+- [ ] Important failure paths are covered by tests.
 
 ### Technical plan and progress
 
@@ -525,14 +525,14 @@
 
 ### Acceptance criteria
 
-- A household can populate an initially empty inventory.
-- At least 20 groceries can be entered in one manual batch.
-- Natural-language input creates a correctable multi-item proposal.
-- Provider failure permits retry or manual continuation without lost input.
-- Corrected batches confirm without partial writes.
-- Expired, soon-to-expire, later, and undated items are identifiable.
-- Items can be searched, filtered, edited, used up, and discarded.
-- The documented verification passes from a clean environment.
+- [ ] A household can populate an initially empty inventory.
+- [ ] At least 20 groceries can be entered in one manual batch.
+- [ ] Natural-language input creates a correctable multi-item proposal.
+- [ ] Provider failure permits retry or manual continuation without lost input.
+- [ ] Corrected batches confirm without partial writes.
+- [ ] Expired, soon-to-expire, later, and undated items are identifiable.
+- [ ] Items can be searched, filtered, edited, used up, and discarded.
+- [ ] The documented verification passes from a clean environment.
 
 ### Technical plan and progress
 
@@ -549,13 +549,13 @@
 
 ### Acceptance criteria
 
-- The README explains the problem, workflow, architecture, and MVP boundary.
-- Setup and test instructions work from a clean environment.
-- Architecture and significant decisions are documented.
-- A reproducible seed or demo inventory is available.
-- The demo covers both manual and natural-language intake.
-- Future voice and receipt adapters are documented without being presented as completed functionality.
-- The engineering log reflects actual implementation decisions and evaluation results.
+- [ ] The README explains the problem, workflow, architecture, and MVP boundary.
+- [ ] Setup and test instructions work from a clean environment.
+- [ ] Architecture and significant decisions are documented.
+- [ ] A reproducible seed or demo inventory is available.
+- [ ] The demo covers both manual and natural-language intake.
+- [ ] Future voice and receipt adapters are documented without being presented as completed functionality.
+- [ ] The engineering log reflects actual implementation decisions and evaluation results.
 
 ### Technical plan and progress
 
