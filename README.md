@@ -39,6 +39,7 @@ Architectural decisions that require trade-off records should later be added as 
 ## Delivery workflow
 
 - Ticket execution follows the technical ticket-state workflow documented in the [project plan](PROJECT_PLAN.md#ticket-workflow-states).
+- The GitHub issue is the authoritative live technical checklist; technical items are updated only after implementation evidence is committed and pushed.
 - The implementation partner maintains only `Technical plan and progress` checkboxes and never checks acceptance criteria without explicit instruction.
 - Product acceptance and movement to `Done` remain the project owner's responsibility.
 - Each milestone is treated as a release and follows the Gitflow release responsibilities documented in the [project plan](PROJECT_PLAN.md#release-and-gitflow-responsibilities).

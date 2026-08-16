@@ -22,10 +22,12 @@
 ## Ticket-state responsibilities
 
 - The implementation partner manages technical ticket-state transitions into `In Progress`, `Blocked`, and `Ready for Acceptance`.
-- The implementation partner maintains only the `Technical plan and progress` checkboxes and checks an item only when repository evidence demonstrates completion.
-- The implementation partner records relevant files, commits, tests, decisions, and blockers in the GitHub issue.
+- The GitHub issue is the authoritative live technical checklist for each ticket. `PROJECT_PLAN.md` defines scope and intended work but does not mirror live technical progress.
+- Ticket work follows this order: activate the ticket, implement locally, verify, commit, push, and only then update the live `Technical plan and progress` checklist in the GitHub issue.
+- The implementation partner maintains only the `Technical plan and progress` checkboxes and checks an item only when repository evidence has been committed and pushed.
+- The implementation partner records relevant files, commit SHAs, verification evidence, decisions, and blockers in the GitHub issue.
 - If work cannot continue, the implementation partner moves the ticket to `Blocked` and records the exact blocker and required next action.
-- When technical work and required verification are complete, the implementation partner moves the ticket to `Ready for Acceptance` and provides an acceptance handoff summarizing evidence for each acceptance criterion.
+- When all technical-plan items are complete, the implementation partner performs a full ticket review, pushes any necessary corrections, and then moves the ticket to `Ready for Acceptance` with evidence for every acceptance criterion.
 - The implementation partner never checks acceptance-criteria boxes, moves a ticket to `Done`, closes an issue, or closes a milestone unless explicitly instructed.
 - Product acceptance, movement to `Done`, and final completion remain the responsibility of the product owner.
 
