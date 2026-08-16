@@ -6,8 +6,7 @@
       "unit": "kg",
       "location": "pantry",
       "expirationDate": null,
-      "dateType": null,
-      "attentionReasons": []
+      "dateType": null
     }
   ]
 }

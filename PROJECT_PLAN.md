@@ -153,12 +153,14 @@
 
 - [ ] Define canonical draft-item schema
 - [ ] Define analyzer input schema
-- [ ] Define analyzer output schema
+- [ ] Define analyzer output proposal schema
 - [ ] Define controlled values
-- [ ] Implement proposal validation
+- [ ] Specify proposal-validation rules
 - [ ] Define provider and validation errors
-- [ ] Create contract fixtures
+- [ ] Create representative JSON contract fixtures
 - [ ] Document sample inputs and outputs
+- [ ] Document analyzer/domain responsibility boundaries
+- [ ] Document scope division between Ticket 0.4 specification and Ticket 2.3 enforcement
 
 ## Ticket 0.5 — Create the runnable application foundation
 

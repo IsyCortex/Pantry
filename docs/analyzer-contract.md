@@ -22,6 +22,14 @@ Ticket 0.4 provides authoritative specification evidence for the analyzer contra
 
 Ticket 2.3 provides executable enforcement and empirical tuning of malformed, off-contract, and provider-failure behavior.
 
+## General non-invention invariant
+
+The analyzer must extract only information that is explicit in the user input or explicit in application-supplied context.
+
+It must not invent missing names, quantities, units, locations, dates, or date types.
+
+Missing information remains `null` until the user reviews or completes it.
+
 ## Analyzer input schema
 
 The application provides the analyzer with a provider-neutral input object:
@@ -57,8 +65,7 @@ The analyzer returns proposal items only. These proposals are untrusted until ap
       "unit": "package",
       "location": "fridge",
       "expirationDate": null,
-      "dateType": null,
-      "attentionReasons": []
+      "dateType": null
     }
   ]
 }
@@ -80,8 +87,6 @@ The analyzer returns proposal items only. These proposals are untrusted until ap
 | `location` | string | no | yes | Controlled location value when present |
 | `expirationDate` | string | no | yes | ISO calendar date when present |
 | `dateType` | string | no | yes | Controlled date-type value when present |
-| `attentionReasons` | array | yes | no | Array of controlled attention-reason values |
-
 - Unknown proposal-item properties are invalid.
 
 ## Application-owned canonical draft-item schema
@@ -140,6 +145,8 @@ Canonical draft items are application-owned review objects. They are not confirm
 
 - `rawText` must not exceed 4,000 characters.
 - Analyzer output must not contain more than 50 proposal items.
+- Analyzer response payload must not exceed 64 KB.
+- Analyzer processing timeout is 15 seconds.
 - `name` must be 1 to 120 characters after trimming.
 - `attentionReasons` must contain only controlled values.
 - Unknown properties are invalid.
@@ -224,8 +231,7 @@ Representative reusable JSON fixtures are stored in `docs/fixtures/analyzer-cont
       "unit": "package",
       "location": "fridge",
       "expirationDate": "2026-08-20",
-      "dateType": "best_before",
-      "attentionReasons": []
+      "dateType": "best_before"
     },
     {
       "name": "rice",
@@ -233,8 +239,7 @@ Representative reusable JSON fixtures are stored in `docs/fixtures/analyzer-cont
       "unit": "package",
       "location": "pantry",
       "expirationDate": null,
-      "dateType": null,
-      "attentionReasons": ["missing_expiration_date"]
+      "dateType": null
     }
   ]
 }

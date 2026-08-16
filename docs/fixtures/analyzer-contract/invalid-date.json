@@ -6,8 +6,7 @@
       "unit": "piece",
       "location": "fridge",
       "expirationDate": "2026-02-30",
-      "dateType": "best_before",
-      "attentionReasons": []
+      "dateType": "best_before"
     }
   ]
 }

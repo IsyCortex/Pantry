@@ -7,7 +7,6 @@
       "location": "fridge",
       "expirationDate": null,
       "dateType": null,
-      "attentionReasons": [],
       "confidence": 0.98
     }
   ]
