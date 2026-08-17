@@ -47,3 +47,85 @@ Architectural decisions that require trade-off records should later be added as 
 ## Current status
 
 Planning. No implementation stack is considered final until the relevant M0 ticket is reviewed and accepted.
+
+## Local foundation setup
+
+### Prerequisites
+
+- Node.js 26 or newer
+- npm 11 or newer
+- Docker with Compose support
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Create local environment configuration
+
+```bash
+cp .env.example .env
+```
+
+The example file contains only local development values. Do not commit secrets or machine-specific overrides.
+
+### 3. Start PostgreSQL
+
+```bash
+docker compose up -d postgres
+```
+
+The Compose service is repository-controlled and reproducible. It binds PostgreSQL to host port `15432`, leaving the common local port `5432` free to avoid conflicts with another local database.
+
+### 4. Run migrations
+
+Wait for the database to become reachable:
+
+```bash
+npm run db:wait
+```
+
+Then run migrations:
+
+```bash
+npm run migrate
+```
+
+The migration command uses the `DATABASE_URL` from `.env`.
+
+Safe rerun behavior:
+
+- applied migrations are recorded in `schema_migrations`
+- rerunning the migration command skips already applied migrations
+- reruns are non-destructive for the existing migration set
+
+### 5. Start the application
+
+```bash
+npm start
+```
+
+The application uses the `DATABASE_URL` from `.env` for `/health/db`.
+
+### 6. Verify operational state
+
+Application health:
+
+```bash
+curl http://127.0.0.1:3000/health
+```
+
+Database health:
+
+```bash
+curl http://127.0.0.1:3000/health/db
+```
+
+### 7. Run automated tests
+
+```bash
+npm test
+```
+
+The foundation intentionally excludes inventory, batch intake, natural-language analysis, and other later feature workflows.
