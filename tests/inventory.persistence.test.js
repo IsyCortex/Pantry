@@ -76,3 +76,60 @@ test('rejects invalid values', async () => {
     }
   );
 });
+
+test('rejects impossible calendar dates in application validation', async () => {
+  await resetInventoryTable();
+
+  await assert.rejects(
+    () => createConfirmedInventoryItem({
+      name: 'Yoghurt',
+      quantity: 1,
+      unit: 'piece',
+      location: 'fridge',
+      expirationDate: '2026-02-30',
+      dateType: 'best_before'
+    }),
+    (error) => {
+      assert.equal(error.code, 'VALIDATION_FAILED');
+      return true;
+    }
+  );
+});
+
+test('rejects unit without quantity', async () => {
+  await resetInventoryTable();
+
+  await assert.rejects(
+    () => createConfirmedInventoryItem({
+      name: 'Flour',
+      quantity: null,
+      unit: 'kg',
+      location: 'pantry',
+      expirationDate: null,
+      dateType: null
+    }),
+    (error) => {
+      assert.equal(error.code, 'VALIDATION_FAILED');
+      return true;
+    }
+  );
+});
+
+test('rejects names longer than 120 trimmed characters', async () => {
+  await resetInventoryTable();
+
+  await assert.rejects(
+    () => createConfirmedInventoryItem({
+      name: 'a'.repeat(121),
+      quantity: 1,
+      unit: 'piece',
+      location: 'pantry',
+      expirationDate: null,
+      dateType: null
+    }),
+    (error) => {
+      assert.equal(error.code, 'VALIDATION_FAILED');
+      return true;
+    }
+  );
+});

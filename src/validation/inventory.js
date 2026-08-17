@@ -3,7 +3,19 @@ const VALID_UNITS = new Set(['g', 'kg', 'ml', 'l', 'piece', 'package']);
 const VALID_DATE_TYPES = new Set(['best_before', 'use_by', 'unspecified']);
 
 function isIsoDate(value) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(`${value}T00:00:00Z`);
+
+  return (
+    !Number.isNaN(date.getTime()) &&
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() + 1 === month &&
+    date.getUTCDate() === day
+  );
 }
 
 function validateInventoryItem(input) {
@@ -12,6 +24,8 @@ function validateInventoryItem(input) {
   const name = typeof input.name === 'string' ? input.name.trim() : '';
   if (!name) {
     errors.push('name is required');
+  } else if (name.length > 120) {
+    errors.push('name must be 1 to 120 trimmed characters');
   }
 
   if (!VALID_LOCATIONS.has(input.location)) {
@@ -24,6 +38,10 @@ function validateInventoryItem(input) {
 
   if (input.unit != null && !VALID_UNITS.has(input.unit)) {
     errors.push('unit is invalid');
+  }
+
+  if (input.unit != null && input.quantity == null) {
+    errors.push('unit requires quantity');
   }
 
   if (input.expirationDate != null && !isIsoDate(input.expirationDate)) {
