@@ -5,13 +5,65 @@ const {
   getDraftBatchById,
   findLatestOpenManualBatch
 } = require('../db/intake-batches');
-const { normalizeDraftRows } = require('../validation/intake-batch');
+const { normalizeDraftRows, hasValue } = require('../validation/intake-batch');
 
 function createValidationError(details) {
   const error = new Error('VALIDATION_FAILED');
   error.code = 'VALIDATION_FAILED';
   error.details = details;
   return error;
+}
+
+function calculateAttentionReasons(rows) {
+  const normalizedNames = new Map();
+
+  rows.forEach((row, index) => {
+    if (hasValue(row.name)) {
+      const key = String(row.name).trim().toLowerCase();
+      const list = normalizedNames.get(key) || [];
+      list.push(index);
+      normalizedNames.set(key, list);
+    }
+  });
+
+  return rows.map((row, index) => {
+    const reasons = [];
+
+    if (!hasValue(row.name)) {
+      reasons.push('missing_name');
+    }
+
+    if (!hasValue(row.location)) {
+      reasons.push('missing_location');
+    }
+
+    if (!hasValue(row.expirationDate)) {
+      reasons.push('missing_expiration_date');
+    }
+
+    if (hasValue(row.name)) {
+      const duplicates = normalizedNames.get(String(row.name).trim().toLowerCase()) || [];
+      if (duplicates.length > 1) {
+        reasons.push('possible_batch_duplicate');
+      }
+    }
+
+    return reasons;
+  });
+}
+
+function buildReviewRows(rows) {
+  const attentionReasons = calculateAttentionReasons(rows);
+
+  return rows.map((row, index) => ({
+    ...row,
+    accepted: row.accepted !== false,
+    attentionReasons: attentionReasons[index],
+    rowErrors: {
+      missingName: !hasValue(row.name),
+      missingLocation: !hasValue(row.location)
+    }
+  }));
 }
 
 async function ensureManualDraftBatch() {
@@ -34,7 +86,7 @@ async function getManualDraftBatch(batchId) {
     id: batch.id,
     state: batch.state,
     sourceType: batch.source_type,
-    rows: batch.rows.map((row) => ({
+    rows: buildReviewRows(batch.rows.map((row) => ({
       id: row.id,
       position: row.position,
       name: row.name ?? '',
@@ -44,7 +96,7 @@ async function getManualDraftBatch(batchId) {
       expirationDate: row.expiration_date ?? '',
       dateType: row.date_type ?? '',
       accepted: row.accepted !== false
-    }))
+    })))
   };
 }
 
@@ -76,6 +128,7 @@ async function saveManualDraftBatch({ batchId, rows }) {
 }
 
 module.exports = {
+  buildReviewRows,
   ensureManualDraftBatch,
   getManualDraftBatch,
   saveManualDraftBatch

@@ -1,7 +1,9 @@
 const express = require('express');
 const {
   ensureManualDraftBatch,
-  saveManualDraftBatch
+  saveManualDraftBatch,
+  getManualDraftBatch,
+  buildReviewRows
 } = require('../services/intake-batch-service');
 const { VALID_LOCATIONS, VALID_UNITS, VALID_DATE_TYPES } = require('../validation/intake-batch');
 
@@ -37,6 +39,19 @@ function parseRows(body) {
     });
   }
   return rows;
+}
+
+function createReviewLocals({ batchId, rows, defaultLocation, errors = [] }) {
+  return {
+    title: 'Review intake batch',
+    batchId,
+    rows: buildReviewRows(rows),
+    defaultLocation,
+    errors,
+    locations: Array.from(VALID_LOCATIONS),
+    units: Array.from(VALID_UNITS),
+    dateTypes: Array.from(VALID_DATE_TYPES)
+  };
 }
 
 function createIntakeBatchRouter() {
@@ -133,6 +148,14 @@ function createIntakeBatchRouter() {
       });
     }
 
+    if (action === 'review') {
+      return res.status(200).render('batch-review', createReviewLocals({
+        batchId: req.body.batchId || '',
+        rows,
+        defaultLocation
+      }));
+    }
+
     try {
       const batch = await saveManualDraftBatch({
         batchId: req.body.batchId ? Number(req.body.batchId) : null,
@@ -161,6 +184,54 @@ function createIntakeBatchRouter() {
           units: Array.from(VALID_UNITS),
           dateTypes: Array.from(VALID_DATE_TYPES)
         });
+        return;
+      }
+
+      next(error);
+    }
+  });
+
+  router.get('/batches/:batchId/review', async (req, res, next) => {
+    try {
+      const batch = await getManualDraftBatch(Number(req.params.batchId));
+      if (!batch) {
+        res.status(404).send('Batch not found');
+        return;
+      }
+
+      res.status(200).render('batch-review', createReviewLocals({
+        batchId: batch.id,
+        rows: batch.rows,
+        defaultLocation: ''
+      }));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/batches/:batchId/review', async (req, res, next) => {
+    const rows = parseRows(req.body);
+    const defaultLocation = req.body.defaultLocation || '';
+
+    try {
+      const saved = await saveManualDraftBatch({
+        batchId: Number(req.params.batchId),
+        rows
+      });
+
+      res.status(200).render('batch-review', createReviewLocals({
+        batchId: saved.id,
+        rows: saved.rows,
+        defaultLocation
+      }));
+    } catch (error) {
+      if (error.code === 'VALIDATION_FAILED') {
+        res.status(400).render('batch-review', createReviewLocals({
+          batchId: req.params.batchId,
+          rows,
+          defaultLocation,
+          errors: error.details
+        }));
         return;
       }
 

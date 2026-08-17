@@ -2,6 +2,10 @@ const VALID_LOCATIONS = new Set(['pantry', 'fridge', 'freezer']);
 const VALID_UNITS = new Set(['g', 'kg', 'ml', 'l', 'piece', 'package']);
 const VALID_DATE_TYPES = new Set(['best_before', 'use_by', 'unspecified']);
 
+function hasValue(value) {
+  return value != null && value !== '';
+}
+
 function isIsoDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
@@ -98,6 +102,7 @@ function normalizeDraftRows(rows) {
 
 module.exports = {
   normalizeDraftRows,
+  hasValue,
   VALID_LOCATIONS,
   VALID_UNITS,
   VALID_DATE_TYPES
