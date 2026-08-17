@@ -27,9 +27,24 @@
 - The implementation partner maintains only the `Technical plan and progress` checkboxes and checks an item only when repository evidence has been committed and pushed.
 - The implementation partner records relevant files, commit SHAs, verification evidence, decisions, and blockers in the GitHub issue.
 - If work cannot continue, the implementation partner moves the ticket to `Blocked` and records the exact blocker and required next action.
+- A formally tracked blocker is a problem that prevents ticket work from continuing and causes the ticket to move to `Blocked`.
+- While a formally tracked blocker is active, the GitHub issue contains a concise active-blocker section covering observed symptoms, affected workflow steps, currently known evidence, and the next diagnostic or resolution action.
+- Minor implementation difficulties that do not stop progress do not require a separate blocker document.
 - When all technical-plan items are complete, the implementation partner performs a full ticket review, pushes any necessary corrections, and then moves the ticket to `Ready for Acceptance` with evidence for every acceptance criterion.
 - The implementation partner never checks acceptance-criteria boxes, moves a ticket to `Done`, closes an issue, or closes a milestone unless explicitly instructed.
 - Product acceptance, movement to `Done`, and final completion remain the responsibility of the product owner.
+
+## Blocker lifecycle
+
+- A ticket moves to `Blocked` only when a formally tracked blocker prevents further work.
+- Diagnosis and resolution continue through the normal evidence-driven workflow.
+- After a blocker is resolved and verified, create a blocker-resolution document under `docs/blockers/` before updating the GitHub issue.
+- Blocker-resolution documents must use a descriptive filename containing the date, ticket number, and a short blocker description.
+- Each blocker-resolution document records the related ticket and milestone, dates encountered and resolved, context, symptoms, impact, diagnostic steps and evidence, confirmed root cause, resolution, verification, recurrence indicators, recovery guidance, and related commits or files.
+- Symptoms, hypotheses considered, and confirmed root cause must be clearly separated. Causes must not be invented.
+- Do not include secrets, sensitive configuration, or excessive raw logs in blocker documents.
+- After the blocker document is committed and pushed, replace the issue’s active blocker section with a concise resolved summary containing the dates, confirmed cause, resolution, verification result, and a link to the blocker document.
+- A ticket returns from `Blocked` to `In Progress` only after the resolution has been verified.
 
 ## Release and Gitflow responsibilities
 
