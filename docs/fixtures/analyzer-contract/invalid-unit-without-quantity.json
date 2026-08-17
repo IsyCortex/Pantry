@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "name": "flour",
+      "quantity": null,
+      "unit": "kg",
+      "location": "pantry",
+      "expirationDate": null,
+      "dateType": null
+    }
+  ]
+}
