@@ -152,7 +152,6 @@ The foundation intentionally excludes inventory, batch intake, natural-language 
 
 - Executable analyzer-response enforcement and error hardening remain in Ticket 2.3.
 - Inventory persistence tables and feature workflows remain for Milestone 1 tickets.
-- Semantic Versioning is established for Pantry releases, and M0 was published as `v0.1.2`.
 
 ### Consequences for subsequent work
 

@@ -70,7 +70,7 @@ docs/
   adr/
 ```
 
-The exact structure should be finalized only after repository inspection and the architecture ticket.
+The repository structure may continue to evolve empirically during implementation, provided it preserves the accepted architectural boundaries between routes, services, database access, validation, and intake-processing responsibilities.
 
 ## Canonical boundary
 
