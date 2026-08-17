@@ -64,9 +64,22 @@ async function findLatestOpenManualBatch(client = pool) {
   return result.rows[0] || null;
 }
 
+async function updateBatchState(batchId, state, client = pool) {
+  const result = await client.query(
+    `UPDATE intake_batches
+     SET state = $2
+     WHERE id = $1
+     RETURNING id, source_type, state, created_at, confirmed_at`,
+    [batchId, state]
+  );
+
+  return result.rows[0] || null;
+}
+
 module.exports = {
   createManualIntakeBatch,
   replaceDraftBatchItems,
   getDraftBatchById,
-  findLatestOpenManualBatch
+  findLatestOpenManualBatch,
+  updateBatchState
 };

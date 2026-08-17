@@ -99,6 +99,15 @@
                 </div>
               <% } %>
 
+              <% if (row.fieldErrors.quantity || row.fieldErrors.unit || row.fieldErrors.expirationDate || row.fieldErrors.dateType) { %>
+                <div class="errors">
+                  <% if (row.fieldErrors.quantity) { %><p><%= row.fieldErrors.quantity %></p><% } %>
+                  <% if (row.fieldErrors.unit) { %><p><%= row.fieldErrors.unit %></p><% } %>
+                  <% if (row.fieldErrors.expirationDate) { %><p><%= row.fieldErrors.expirationDate %></p><% } %>
+                  <% if (row.fieldErrors.dateType) { %><p><%= row.fieldErrors.dateType %></p><% } %>
+                </div>
+              <% } %>
+
               <% if (row.attentionReasons.length > 0) { %>
                 <div class="warnings">
                   <h3>Attention reasons</h3>

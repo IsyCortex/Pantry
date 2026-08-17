@@ -3,7 +3,7 @@ const VALID_UNITS = new Set(['g', 'kg', 'ml', 'l', 'piece', 'package']);
 const VALID_DATE_TYPES = new Set(['best_before', 'use_by', 'unspecified']);
 
 function hasValue(value) {
-  return value != null && value !== '';
+  return value != null && String(value).trim() !== '';
 }
 
 function isIsoDate(value) {

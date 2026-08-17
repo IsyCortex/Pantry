@@ -3,7 +3,8 @@ const {
   ensureManualDraftBatch,
   saveManualDraftBatch,
   getManualDraftBatch,
-  buildReviewRows
+  buildReviewRows,
+  markBatchPendingReview
 } = require('../services/intake-batch-service');
 const { VALID_LOCATIONS, VALID_UNITS, VALID_DATE_TYPES } = require('../validation/intake-batch');
 
@@ -149,6 +150,9 @@ function createIntakeBatchRouter() {
     }
 
     if (action === 'review') {
+      if (req.body.batchId) {
+        await markBatchPendingReview(Number(req.body.batchId));
+      }
       return res.status(200).render('batch-review', createReviewLocals({
         batchId: req.body.batchId || '',
         rows,

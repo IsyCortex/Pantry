@@ -3,7 +3,8 @@ const {
   createManualIntakeBatch,
   replaceDraftBatchItems,
   getDraftBatchById,
-  findLatestOpenManualBatch
+  findLatestOpenManualBatch,
+  updateBatchState
 } = require('../db/intake-batches');
 const { normalizeDraftRows, hasValue } = require('../validation/intake-batch');
 
@@ -52,6 +53,35 @@ function calculateAttentionReasons(rows) {
   });
 }
 
+function createFieldErrors(row) {
+  const fieldErrors = {};
+
+  if (row.quantity != null && row.quantity !== '' && (!Number.isFinite(Number(row.quantity)) || Number(row.quantity) <= 0)) {
+    fieldErrors.quantity = 'Quantity must be a positive number when provided.';
+  }
+
+  if (hasValue(row.unit) && !hasValue(row.quantity)) {
+    fieldErrors.unit = 'Unit requires quantity.';
+  }
+
+  if (hasValue(row.expirationDate)) {
+    const validation = normalizeDraftRows([{ ...row }]);
+    const dateError = validation.errors.find((error) => error.includes('.expirationDate '));
+    if (dateError) {
+      fieldErrors.expirationDate = 'Expiration date must be a valid ISO date.';
+    }
+
+    const dateTypeError = validation.errors.find((error) => error.includes('.dateType '));
+    if (dateTypeError) {
+      fieldErrors.dateType = 'Date type is invalid for the supplied expiration date.';
+    }
+  } else if (hasValue(row.dateType)) {
+    fieldErrors.dateType = 'Date type requires an expiration date.';
+  }
+
+  return fieldErrors;
+}
+
 function buildReviewRows(rows) {
   const attentionReasons = calculateAttentionReasons(rows);
 
@@ -59,9 +89,10 @@ function buildReviewRows(rows) {
     ...row,
     accepted: row.accepted !== false,
     attentionReasons: attentionReasons[index],
+    fieldErrors: createFieldErrors(row),
     rowErrors: {
-      missingName: !hasValue(row.name),
-      missingLocation: !hasValue(row.location)
+      missingName: row.accepted !== false && !hasValue(row.name),
+      missingLocation: row.accepted !== false && !hasValue(row.location)
     }
   }));
 }
@@ -127,9 +158,25 @@ async function saveManualDraftBatch({ batchId, rows }) {
   }
 }
 
+async function markBatchPendingReview(batchId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const updated = await updateBatchState(batchId, 'pending_review', client);
+    await client.query('COMMIT');
+    return updated;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   buildReviewRows,
   ensureManualDraftBatch,
   getManualDraftBatch,
-  saveManualDraftBatch
+  saveManualDraftBatch,
+  markBatchPendingReview
 };

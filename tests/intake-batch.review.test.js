@@ -16,7 +16,7 @@ test('review page shows full batch, row-level issues, missing-date warnings, and
     rows: [
       { name: 'Milk', quantity: '2', unit: 'package', location: '', expirationDate: '', dateType: '' },
       { name: 'Milk', quantity: '1', unit: 'package', location: 'fridge', expirationDate: '', dateType: '' },
-      { name: '', quantity: '', unit: '', location: 'pantry', expirationDate: '', dateType: '' }
+      { name: '   ', quantity: '', unit: '', location: 'pantry', expirationDate: '', dateType: '' }
     ]
   });
 
@@ -85,6 +85,76 @@ test('review page preserves exclusions and corrections without recreating the ba
     assert.equal(reloaded.status, 200);
     assert.match(reloadedBody, /Brown Rice/);
     assert.match(reloadedBody, /Excluded/);
+  } finally {
+    server.close();
+  }
+});
+
+test('excluded rows do not show blocking missing-name or missing-location errors', async () => {
+  await resetBatchTables();
+
+  const saved = await saveManualDraftBatch({
+    batchId: null,
+    rows: [
+      { name: '', quantity: '', unit: '', location: '', expirationDate: '', dateType: '', accepted: false },
+      { name: 'Rice', quantity: '1', unit: 'package', location: 'pantry', expirationDate: '', dateType: '', accepted: true }
+    ]
+  });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/batches/${saved.id}/review`);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    assert.doesNotMatch(body, /Name is required before confirmation\./);
+    assert.doesNotMatch(body, /Storage location is required before confirmation\./);
+  } finally {
+    server.close();
+  }
+});
+
+test('review page shows structured field errors and transitions batch to pending_review', async () => {
+  await resetBatchTables();
+
+  const saved = await saveManualDraftBatch({
+    batchId: null,
+    rows: [
+      { name: 'Milk', quantity: '', unit: 'package', location: 'fridge', expirationDate: '2026-02-30', dateType: 'best_before' }
+    ]
+  });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+
+  try {
+    const manualReviewParams = new URLSearchParams();
+    manualReviewParams.set('batchId', String(saved.id));
+    manualReviewParams.set('action', 'review');
+    manualReviewParams.set('rows[0][name]', 'Milk');
+    manualReviewParams.set('rows[0][quantity]', '');
+    manualReviewParams.set('rows[0][unit]', 'package');
+    manualReviewParams.set('rows[0][location]', 'fridge');
+    manualReviewParams.set('rows[0][expirationDate]', '2026-02-30');
+    manualReviewParams.set('rows[0][dateType]', 'best_before');
+
+    const manualReviewResponse = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: manualReviewParams
+    });
+    const manualReviewBody = await manualReviewResponse.text();
+    assert.equal(manualReviewResponse.status, 200);
+    assert.match(manualReviewBody, /Unit requires quantity\./);
+    assert.match(manualReviewBody, /Expiration date must be a valid ISO date\./);
+
+    const reloaded = await fetch(`http://127.0.0.1:${port}/batches/${saved.id}/review`);
+    const reloadedBody = await reloaded.text();
+    assert.equal(reloaded.status, 200);
+    assert.match(reloadedBody, /Review intake batch/);
   } finally {
     server.close();
   }
