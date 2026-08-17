@@ -116,13 +116,13 @@ test('excluded rows do not show blocking missing-name or missing-location errors
   }
 });
 
-test('review page shows structured field errors and transitions batch to pending_review', async () => {
+test('review action transitions a valid persisted draft batch into pending_review', async () => {
   await resetBatchTables();
 
   const saved = await saveManualDraftBatch({
     batchId: null,
     rows: [
-      { name: 'Milk', quantity: '', unit: 'package', location: 'fridge', expirationDate: '2026-02-30', dateType: 'best_before' }
+      { name: 'Milk', quantity: '2', unit: 'package', location: 'fridge', expirationDate: '2026-08-20', dateType: 'best_before' }
     ]
   });
 
@@ -148,13 +148,58 @@ test('review page shows structured field errors and transitions batch to pending
     });
     const manualReviewBody = await manualReviewResponse.text();
     assert.equal(manualReviewResponse.status, 200);
-    assert.match(manualReviewBody, /Unit requires quantity\./);
-    assert.match(manualReviewBody, /Expiration date must be a valid ISO date\./);
+    assert.match(manualReviewBody, /Review intake batch/);
 
     const reloaded = await fetch(`http://127.0.0.1:${port}/batches/${saved.id}/review`);
     const reloadedBody = await reloaded.text();
     assert.equal(reloaded.status, 200);
     assert.match(reloadedBody, /Review intake batch/);
+  } finally {
+    server.close();
+  }
+});
+
+test('review route shows structured row field errors for invalid edits and does not persist them', async () => {
+  await resetBatchTables();
+
+  const saved = await saveManualDraftBatch({
+    batchId: null,
+    rows: [
+      { name: 'Milk', quantity: '2', unit: 'package', location: 'fridge', expirationDate: '2026-08-20', dateType: 'best_before' }
+    ]
+  });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+
+  try {
+    const params = new URLSearchParams();
+    params.set('rows[0][accepted]', 'true');
+    params.set('rows[0][name]', 'Milk');
+    params.set('rows[0][quantity]', '');
+    params.set('rows[0][unit]', 'package');
+    params.set('rows[0][location]', 'fridge');
+    params.set('rows[0][expirationDate]', '2026-02-30');
+    params.set('rows[0][dateType]', 'best_before');
+
+    const response = await fetch(`http://127.0.0.1:${port}/batches/${saved.id}/review`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: params
+    });
+    const body = await response.text();
+    assert.equal(response.status, 400);
+    assert.match(body, /Unit requires quantity\./);
+    assert.match(body, /Expiration date must be a valid ISO date\./);
+    assert.match(body, /value="2026-02-30"/);
+
+    const reloaded = await fetch(`http://127.0.0.1:${port}/batches/${saved.id}/review`);
+    const reloadedBody = await reloaded.text();
+    assert.equal(reloaded.status, 200);
+    assert.match(reloadedBody, /value="2"/);
+    assert.match(reloadedBody, /value="2026-08-20"/);
+    assert.doesNotMatch(reloadedBody, /value="2026-02-30"/);
   } finally {
     server.close();
   }

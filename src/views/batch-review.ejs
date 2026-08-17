@@ -99,12 +99,13 @@
                 </div>
               <% } %>
 
-              <% if (row.fieldErrors.quantity || row.fieldErrors.unit || row.fieldErrors.expirationDate || row.fieldErrors.dateType) { %>
+              <% const fieldErrors = (typeof structuredFieldErrors !== 'undefined' && structuredFieldErrors[index]) ? structuredFieldErrors[index] : row.fieldErrors; %>
+              <% if (fieldErrors.quantity || fieldErrors.unit || fieldErrors.expirationDate || fieldErrors.dateType) { %>
                 <div class="errors">
-                  <% if (row.fieldErrors.quantity) { %><p><%= row.fieldErrors.quantity %></p><% } %>
-                  <% if (row.fieldErrors.unit) { %><p><%= row.fieldErrors.unit %></p><% } %>
-                  <% if (row.fieldErrors.expirationDate) { %><p><%= row.fieldErrors.expirationDate %></p><% } %>
-                  <% if (row.fieldErrors.dateType) { %><p><%= row.fieldErrors.dateType %></p><% } %>
+                  <% if (fieldErrors.quantity) { %><p><%= fieldErrors.quantity %></p><% } %>
+                  <% if (fieldErrors.unit) { %><p><%= fieldErrors.unit %></p><% } %>
+                  <% if (fieldErrors.expirationDate) { %><p><%= fieldErrors.expirationDate %></p><% } %>
+                  <% if (fieldErrors.dateType) { %><p><%= fieldErrors.dateType %></p><% } %>
                 </div>
               <% } %>
 

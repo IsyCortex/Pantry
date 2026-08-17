@@ -55,6 +55,10 @@ function createReviewLocals({ batchId, rows, defaultLocation, errors = [] }) {
   };
 }
 
+function buildReviewErrorDetails(rows) {
+  return buildReviewRows(rows).map((row) => row.fieldErrors);
+}
+
 function createIntakeBatchRouter() {
   const router = express.Router();
 
@@ -230,12 +234,15 @@ function createIntakeBatchRouter() {
       }));
     } catch (error) {
       if (error.code === 'VALIDATION_FAILED') {
-        res.status(400).render('batch-review', createReviewLocals({
+        res.status(400).render('batch-review', {
+          ...createReviewLocals({
           batchId: req.params.batchId,
           rows,
           defaultLocation,
           errors: error.details
-        }));
+          }),
+          structuredFieldErrors: buildReviewErrorDetails(rows)
+        });
         return;
       }
 
