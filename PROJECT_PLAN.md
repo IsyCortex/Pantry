@@ -195,7 +195,7 @@
 
 - [ ] Inventory items can be created and retrieved.
 - [ ] Confirmed items require a name and storage location.
-- [ ] Quantity, unit, expiration date, and date type are optional.
+- [ ] Quantity, unit, and expiration date are optional; date type follows the documented expiration-date nullability rules.
 - [ ] Invalid values are rejected.
 - [ ] Database operations use parameterized queries.
 - [ ] Persistence behavior is covered by automated tests.
@@ -238,6 +238,7 @@
 - [ ] Enter creates or advances to the next row where appropriate.
 - [ ] A default storage location applies only to newly created rows.
 - [ ] Draft work survives validation errors.
+- [ ] An unconfirmed draft batch can be resumed after a page reload without recreating its rows.
 - [ ] At least 20 items can be entered without navigating away.
 
 ### Technical plan and progress

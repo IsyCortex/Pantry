@@ -23,6 +23,7 @@ No AI-generated proposal becomes inventory without explicit human confirmation.
 | [Domain model](docs/domain-model.md) | Domain language, entities, lifecycle rules, and validation invariants |
 | [Architecture](docs/architecture.md) | Application structure, technical boundaries, persistence, testing strategy, and release workflow constraints |
 | [Input pipeline](docs/input-pipeline.md) | Manual and AI-assisted batch ingestion, review boundary, and future voice/receipt adapters |
+| [Engineering log](docs/engineering-log.md) | Implementation-phase engineering notes, deviations, and evidence summaries |
 
 ## Documentation strategy
 
@@ -34,7 +35,7 @@ The documentation is intentionally split rather than maintained as one large fil
 - Architecture decisions should be reviewable independently from product planning.
 - The input pipeline deserves a dedicated document because it is the main extensibility and AI-safety boundary.
 
-Architectural decisions that require trade-off records should later be added as individual ADRs under `docs/adr/`. An engineering log should be introduced when implementation begins and updated alongside ticket progress.
+Architectural decisions that require trade-off records are maintained as individual ADRs under `docs/adr/`. The engineering log is maintained under `docs/engineering-log.md` and should be updated alongside ticket progress.
 
 ## Delivery workflow
 
@@ -46,7 +47,7 @@ Architectural decisions that require trade-off records should later be added as 
 
 ## Current status
 
-Planning. No implementation stack is considered final until the relevant M0 ticket is reviewed and accepted.
+Milestone 0 is complete and released as `v0.1.2`. The implementation stack, foundational architecture, and analyzer-contract specification are accepted for the current development phase.
 
 ## Local foundation setup
 
@@ -151,7 +152,7 @@ The foundation intentionally excludes inventory, batch intake, natural-language 
 
 - Executable analyzer-response enforcement and error hardening remain in Ticket 2.3.
 - Inventory persistence tables and feature workflows remain for Milestone 1 tickets.
-- Release tagging convention has not yet been established and must be approved before the first release tag is created.
+- Semantic Versioning is established for Pantry releases, and M0 was published as `v0.1.2`.
 
 ### Consequences for subsequent work
 

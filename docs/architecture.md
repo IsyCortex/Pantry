@@ -2,11 +2,11 @@
 
 ## Status
 
-This document defines the proposed architecture to be reviewed in M0. The stack is not final until Ticket 0.3 is accepted.
+This document defines the accepted Pantry architecture established in Milestone 0.
 
-## Proposed stack
+## Application stack
 
-The Fleet Maintenance reference stack remains suitable:
+The accepted stack for Pantry is:
 
 - Node.js LTS
 - Plain JavaScript
