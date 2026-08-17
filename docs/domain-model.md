@@ -14,6 +14,8 @@ A reviewable collection of draft items created during one entry session. Its sou
 
 An editable proposal inside an intake batch. It is not active inventory and may be incomplete.
 
+The analyzer proposal contract and the transformation into application-owned canonical draft items are defined in [`docs/analyzer-contract.md`](analyzer-contract.md).
+
 ### Storage location
 
 One of:

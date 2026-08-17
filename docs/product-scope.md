@@ -117,3 +117,24 @@ The MVP is successful when a household member can:
 - Confirm a batch without partial database writes.
 - Immediately identify expired, soon-to-expire, and undated food.
 - Complete all core workflows on desktop and a narrow mobile viewport.
+
+## Scope acceptance
+
+The MVP product scope defined in this document is accepted as the current implementation boundary for Ticket 0.1.
+
+Accepted scope summary:
+
+- Single-household inventory management only
+- Manual and natural-language batch intake converging on one review workflow
+- Human confirmation required before inventory persistence
+- Inventory visibility by location and expiration status
+- Used-up and discarded lifecycle actions
+
+Accepted exclusions remain in force:
+
+- Accounts and permissions
+- Multi-household collaboration
+- Recipes, shopping recommendations, and meal planning
+- Nutrition, allergy, and diet functionality
+- Barcode, voice, and receipt intake as MVP deliverables
+- Automatic expiration prediction or food-safety decisions

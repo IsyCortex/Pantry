@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: pantry-postgres
+    environment:
+      POSTGRES_DB: pantry
+      POSTGRES_USER: pantry
+      POSTGRES_PASSWORD: pantry
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pantry -d pantry"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - pantry-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  pantry-postgres-data:

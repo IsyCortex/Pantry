@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "name": "rice",
+      "quantity": null,
+      "unit": null,
+      "location": "pantry",
+      "expirationDate": null,
+      "dateType": null
+    }
+  ]
+}

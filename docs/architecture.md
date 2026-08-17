@@ -112,6 +112,8 @@ analyze({
 
 The model receives controlled context. Relative dates must not depend on the model host's clock or timezone.
 
+The single authoritative analyzer contract source is [`docs/analyzer-contract.md`](analyzer-contract.md).
+
 ## Persistence boundary
 
 The application persists a proposal as an intake batch under review. It creates inventory only through the confirmation service.
@@ -191,3 +193,16 @@ The final MVP test should begin with an empty database and cover manual intake, 
 - Maintain `docs/engineering-log.md` concurrently with development.
 - Add one ADR per significant accepted trade-off.
 - Keep setup, test, and demo instructions in the root README once implementation begins.
+
+Current ADR set:
+
+- [ADR 0001: Application Stack](adr/0001-application-stack.md)
+- [ADR 0002: Human Review Boundary](adr/0002-human-review-boundary.md)
+- [ADR 0003: Canonical Input Pipeline](adr/0003-canonical-input-pipeline.md)
+
+## Repository workflow and release boundaries
+
+- Supporting product and technical documents belong under `docs/`.
+- Ticket-state rules, acceptance boundaries, and release approvals are defined in `PROJECT_PLAN.md` and govern day-to-day technical execution.
+- Each milestone is treated as a release candidate, but no release branch preparation, merge, tag, publication, or milestone closure occurs without explicit project-owner authorization.
+- Gitflow release execution follows this sequence after approval: prepare the release, merge into `main` with an explicit merge commit, create an annotated version tag, merge back into `develop`, and publish a GitHub Release.
