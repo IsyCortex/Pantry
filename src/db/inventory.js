@@ -23,4 +23,17 @@ async function getInventoryItemById(id) {
   return result.rows[0] || null;
 }
 
-module.exports = { createInventoryItem, getInventoryItemById };
+async function listActiveInventoryItems() {
+  const result = await pool.query(
+    `SELECT id, name, quantity, unit, location,
+            expiration_date::text AS expiration_date,
+            date_type, lifecycle_status, source_batch_id, created_at, updated_at, removed_at
+     FROM inventory_items
+     WHERE lifecycle_status = 'active'
+     ORDER BY id ASC`
+  );
+
+  return result.rows;
+}
+
+module.exports = { createInventoryItem, getInventoryItemById, listActiveInventoryItems };

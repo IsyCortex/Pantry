@@ -1,8 +1,9 @@
 const express = require('express');
 const path = require('path');
 const healthRoutes = require('./routes/health');
+const { createInventoryRouter } = require('./routes/inventory');
 
-function createApp() {
+function createApp(options = {}) {
   const app = express();
 
   app.set('view engine', 'ejs');
@@ -13,8 +14,13 @@ function createApp() {
   });
 
   app.use(healthRoutes);
+  app.use(createInventoryRouter({ inventoryLoader: options.inventoryLoader }));
 
   app.use((error, _req, res, _next) => {
+    if (error) {
+      console.error(error.stack || error);
+    }
+
     res.status(500).json({ status: 'error', message: 'Internal server error' });
   });
 
