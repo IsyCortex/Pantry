@@ -7,11 +7,6 @@ async function resetInventoryTable() {
   await pool.query('TRUNCATE TABLE inventory_items RESTART IDENTITY');
 }
 
-async function logAllInventoryItems(label) {
-  const rows = await pool.query(`SELECT id, name, quantity, unit, location, expiration_date::text AS expiration_date, date_type, lifecycle_status FROM inventory_items ORDER BY id`);
-  console.log(`[inventory.persistence.test] ${label}: ${JSON.stringify(rows.rows)}`);
-}
-
 test('creates and retrieves a confirmed inventory item', async () => {
   await resetInventoryTable();
 
@@ -65,7 +60,6 @@ test('defaults dateType to unspecified when date exists and no type is provided'
 
 test('rejects invalid values', async () => {
   await resetInventoryTable();
-  await logAllInventoryItems('test6-before-invalid-values');
 
   await assert.rejects(
     () => createConfirmedInventoryItem({
@@ -85,7 +79,6 @@ test('rejects invalid values', async () => {
 
 test('rejects impossible calendar dates in application validation', async () => {
   await resetInventoryTable();
-  await logAllInventoryItems('test7-before-impossible-calendar-date');
 
   await assert.rejects(
     () => createConfirmedInventoryItem({
@@ -105,7 +98,6 @@ test('rejects impossible calendar dates in application validation', async () => 
 
 test('rejects unit without quantity', async () => {
   await resetInventoryTable();
-  await logAllInventoryItems('test8-before-unit-without-quantity');
 
   await assert.rejects(
     () => createConfirmedInventoryItem({
@@ -125,7 +117,6 @@ test('rejects unit without quantity', async () => {
 
 test('rejects names longer than 120 trimmed characters', async () => {
   await resetInventoryTable();
-  await logAllInventoryItems('test9-before-overlength-name');
 
   await assert.rejects(
     () => createConfirmedInventoryItem({

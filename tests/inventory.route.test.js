@@ -7,26 +7,10 @@ async function resetInventoryTable() {
   await pool.query('TRUNCATE TABLE inventory_items RESTART IDENTITY');
 }
 
-async function logAllInventoryItems(label) {
-  const rows = await pool.query(`SELECT id, name, quantity, unit, location, expiration_date::text AS expiration_date, date_type, lifecycle_status FROM inventory_items ORDER BY id`);
-  console.log(`[inventory.route.test] ${label}: ${JSON.stringify(rows.rows)}`);
-}
-
 async function insertInventoryItem(item) {
-  const sql = `INSERT INTO inventory_items (name, quantity, unit, location, expiration_date, date_type, lifecycle_status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`;
-  console.log('[inventory.route.test] SQL:', sql.replace(/\s+/g, ' ').trim());
-  console.log('[inventory.route.test] PARAMS:', JSON.stringify([
-    item.name,
-    item.quantity,
-    item.unit,
-    item.location,
-    item.expirationDate,
-    item.dateType,
-    item.lifecycleStatus || 'active'
-  ]));
   await pool.query(
-    sql,
+    `INSERT INTO inventory_items (name, quantity, unit, location, expiration_date, date_type, lifecycle_status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
     [item.name, item.quantity, item.unit, item.location, item.expirationDate, item.dateType, item.lifecycleStatus || 'active']
   );
 }
@@ -36,7 +20,6 @@ test('displays active inventory items and excludes inactive items', async () => 
   await insertInventoryItem({ name: 'Milk', quantity: 2, unit: 'package', location: 'fridge', expirationDate: '2026-08-20', dateType: 'best_before', lifecycleStatus: 'active' });
   await insertInventoryItem({ name: 'Bread', quantity: 1, unit: 'package', location: 'pantry', expirationDate: null, dateType: null, lifecycleStatus: 'used_up' });
   await insertInventoryItem({ name: 'Soup', quantity: 1, unit: 'package', location: 'pantry', expirationDate: null, dateType: null, lifecycleStatus: 'discarded' });
-  await logAllInventoryItems('test10-after-population');
 
   const app = createApp();
   const server = app.listen(0);
