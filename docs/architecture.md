@@ -166,6 +166,8 @@ Known errors should produce safe user-facing messages. Provider payloads and dat
 
 Automated tests must not require a live language model.
 
+DB-backed automated tests currently use serialized execution through the repository test command so files that share the repository-controlled test database do not erase one another's fixtures during setup.
+
 ### Live integration evaluation
 
 A separate local-provider evaluation should cover:

@@ -130,6 +130,10 @@ curl http://127.0.0.1:3000/health/db
 npm test
 ```
 
+`npm test` runs Node's test runner with `--test-concurrency=1`.
+
+DB-backed tests currently share the repository-controlled test database and use serialized execution to avoid cross-file fixture interference.
+
 The foundation intentionally excludes inventory, batch intake, natural-language analysis, and other later feature workflows.
 
 ## M0 implementation record
