@@ -21,20 +21,41 @@ test('creates and resumes one manual draft batch', async () => {
   assert.equal(second.rows.length, 0);
 });
 
-test('saves draft rows with default location only for newly created rows', async () => {
+test('saves rows without overwriting explicit or already-empty existing locations during save', async () => {
   await resetBatchTables();
 
   const batch = await saveManualDraftBatch({
     batchId: null,
-    defaultLocation: 'fridge',
     rows: [
       { name: 'Milk', quantity: '2', unit: 'package', location: '', expirationDate: '2026-08-20', dateType: 'best_before' },
       { name: 'Rice', quantity: '', unit: '', location: 'pantry', expirationDate: '', dateType: '' }
     ]
   });
 
-  assert.equal(batch.rows[0].location, 'fridge');
+  assert.equal(batch.rows[0].location, '');
   assert.equal(batch.rows[1].location, 'pantry');
+});
+
+test('saving an existing draft does not retroactively apply the current default location to older blank rows', async () => {
+  await resetBatchTables();
+
+  const saved = await saveManualDraftBatch({
+    batchId: null,
+    rows: [
+      { name: 'Milk', quantity: '2', unit: 'package', location: '', expirationDate: '', dateType: '' }
+    ]
+  });
+
+  const reSaved = await saveManualDraftBatch({
+    batchId: saved.id,
+    rows: [
+      { name: 'Milk', quantity: '2', unit: 'package', location: '', expirationDate: '', dateType: '' },
+      { name: 'Peas', quantity: '1', unit: 'package', location: 'freezer', expirationDate: '', dateType: '' }
+    ]
+  });
+
+  assert.equal(reSaved.rows[0].location, '');
+  assert.equal(reSaved.rows[1].location, 'freezer');
 });
 
 test('preserves draft rows across reload by reloading the saved batch', async () => {

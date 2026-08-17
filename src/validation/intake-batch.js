@@ -77,7 +77,7 @@ function normalizeDraftItem(input, index) {
   };
 }
 
-function normalizeDraftRows(rows, defaultLocation = null) {
+function normalizeDraftRows(rows) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const errors = [];
   const normalizedRows = safeRows.map((row, index) => {
@@ -85,7 +85,6 @@ function normalizeDraftRows(rows, defaultLocation = null) {
     errors.push(...normalized.errors);
     return {
       ...normalized.value,
-      location: normalized.value.location ?? defaultLocation ?? null,
       position: index
     };
   });

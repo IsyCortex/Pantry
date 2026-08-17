@@ -17,6 +17,16 @@ function createEmptyRow(location = '') {
   };
 }
 
+function getActionIndex(body) {
+  const raw = body.actionRowIndex;
+  if (Array.isArray(raw)) {
+    const last = raw[raw.length - 1];
+    return Number(last || 0);
+  }
+
+  return Number(raw || 0);
+}
+
 function parseRows(body) {
   const rows = [];
   const source = body.rows || [];
@@ -46,7 +56,7 @@ function createIntakeBatchRouter() {
         batchId: batch.id,
         rows,
         defaultLocation: '',
-        errors: [] ,
+        errors: [],
         locations: Array.from(VALID_LOCATIONS),
         units: Array.from(VALID_UNITS),
         dateTypes: Array.from(VALID_DATE_TYPES)
@@ -76,7 +86,7 @@ function createIntakeBatchRouter() {
     }
 
     if (action === 'duplicate-row') {
-      const index = Number(req.body.rowIndex || 0);
+      const index = getActionIndex(req.body);
       const source = rows[index] || createEmptyRow(defaultLocation);
       rows.splice(index + 1, 0, { ...source });
       return res.status(200).render('manual-batch', {
@@ -92,7 +102,7 @@ function createIntakeBatchRouter() {
     }
 
     if (action === 'remove-row') {
-      const index = Number(req.body.rowIndex || 0);
+      const index = getActionIndex(req.body);
       rows.splice(index, 1);
       if (rows.length === 0) {
         rows.push(createEmptyRow(defaultLocation));
@@ -110,7 +120,7 @@ function createIntakeBatchRouter() {
     }
 
     if (action === 'move-up' || action === 'move-down') {
-      const index = Number(req.body.rowIndex || 0);
+      const index = getActionIndex(req.body);
       const targetIndex = action === 'move-up' ? index - 1 : index + 1;
       if (targetIndex >= 0 && targetIndex < rows.length) {
         const [row] = rows.splice(index, 1);
@@ -131,8 +141,7 @@ function createIntakeBatchRouter() {
     try {
       const batch = await saveManualDraftBatch({
         batchId: req.body.batchId ? Number(req.body.batchId) : null,
-        rows,
-        defaultLocation
+        rows
       });
 
       res.status(200).render('manual-batch', {

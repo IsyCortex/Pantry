@@ -12,6 +12,7 @@ test('GET / returns placeholder page', async () => {
     const body = await response.text();
     assert.equal(response.status, 200);
     assert.match(body, /Pantry foundation is running\./);
+    assert.match(body, /Start a manual intake batch/);
   } finally {
     server.close();
   }

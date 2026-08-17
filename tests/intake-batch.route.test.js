@@ -21,6 +21,8 @@ test('GET /batches/manual renders the manual batch editor', async () => {
     assert.match(body, /Manual intake batch/);
     assert.match(body, /Default location for newly created rows/);
     assert.match(body, /Save draft batch/);
+    assert.match(body, /Back to home/);
+    assert.match(body, /Enter advances/);
   } finally {
     server.close();
   }
@@ -59,7 +61,7 @@ test('POST /batches/manual preserves validation errors and entered values', asyn
   }
 });
 
-test('POST /batches/manual supports add, duplicate, remove, and reorder actions', async () => {
+test('POST /batches/manual supports browser-realistic add, duplicate, remove, and reorder submissions', async () => {
   await resetBatchTables();
 
   const app = createApp();
@@ -89,7 +91,7 @@ test('POST /batches/manual supports add, duplicate, remove, and reorder actions'
 
     const duplicateParams = new URLSearchParams(addParams);
     duplicateParams.set('action', 'duplicate-row');
-    duplicateParams.set('rowIndex', '0');
+    duplicateParams.append('actionRowIndex', '0');
     response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -101,7 +103,8 @@ test('POST /batches/manual supports add, duplicate, remove, and reorder actions'
 
     const moveParams = new URLSearchParams();
     moveParams.set('action', 'move-up');
-    moveParams.set('rowIndex', '1');
+    moveParams.append('actionRowIndex', '0');
+    moveParams.append('actionRowIndex', '1');
     moveParams.set('rows[0][name]', 'Milk');
     moveParams.set('rows[0][quantity]', '2');
     moveParams.set('rows[0][unit]', 'package');
@@ -125,7 +128,8 @@ test('POST /batches/manual supports add, duplicate, remove, and reorder actions'
 
     const removeParams = new URLSearchParams(moveParams);
     removeParams.set('action', 'remove-row');
-    removeParams.set('rowIndex', '0');
+    removeParams.delete('actionRowIndex');
+    removeParams.append('actionRowIndex', '0');
     response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -135,6 +139,108 @@ test('POST /batches/manual supports add, duplicate, remove, and reorder actions'
     assert.equal(response.status, 200);
     assert.doesNotMatch(body, /value="Milk"/);
     assert.match(body, /value="Rice"/);
+  } finally {
+    server.close();
+  }
+});
+
+test('GET / exposes a discoverable link into manual intake', async () => {
+  await resetBatchTables();
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/`);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /Start a manual intake batch/);
+    assert.match(body, /href="\/batches\/manual"/);
+  } finally {
+    server.close();
+  }
+});
+
+test('manual batch editor markup provides deterministic Enter-key advancement handling', async () => {
+  await resetBatchTables();
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/batches/manual`);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /form\.addEventListener\('keydown'/);
+    assert.match(body, /event\.key !== 'Enter'/);
+    assert.match(body, /requestSubmit\(submitter\)/);
+  } finally {
+    server.close();
+  }
+});
+
+test('POST /batches/manual can render and save twenty rows without navigation away', async () => {
+  await resetBatchTables();
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+
+  try {
+    let response = await fetch(`http://127.0.0.1:${port}/batches/manual`);
+    let body = await response.text();
+    assert.equal(response.status, 200);
+
+    for (let totalRows = 2; totalRows <= 20; totalRows += 1) {
+      const addParams = new URLSearchParams();
+      addParams.set('action', 'add-row');
+      addParams.set('defaultLocation', 'pantry');
+
+      for (let index = 0; index < totalRows - 1; index += 1) {
+        addParams.set(`rows[${index}][name]`, `Item ${index + 1}`);
+        addParams.set(`rows[${index}][quantity]`, '1');
+        addParams.set(`rows[${index}][unit]`, 'piece');
+        addParams.set(`rows[${index}][location]`, index === 0 ? 'pantry' : '');
+        addParams.set(`rows[${index}][expirationDate]`, '');
+        addParams.set(`rows[${index}][dateType]`, '');
+      }
+
+      response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: addParams
+      });
+      body = await response.text();
+      assert.equal(response.status, 200);
+      assert.match(body, new RegExp(`rows\\[${totalRows - 1}\\]\\[name\\]`));
+    }
+
+    const saveParams = new URLSearchParams();
+    saveParams.set('action', 'save');
+    for (let index = 0; index < 20; index += 1) {
+      saveParams.set(`rows[${index}][name]`, `Item ${index + 1}`);
+      saveParams.set(`rows[${index}][quantity]`, '1');
+      saveParams.set(`rows[${index}][unit]`, 'piece');
+      saveParams.set(`rows[${index}][location]`, index === 0 ? 'pantry' : '');
+      saveParams.set(`rows[${index}][expirationDate]`, '');
+      saveParams.set(`rows[${index}][dateType]`, '');
+    }
+
+    response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: saveParams
+    });
+    body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /value="Item 20"/);
+
+    response = await fetch(`http://127.0.0.1:${port}/batches/manual`);
+    body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /value="Item 20"/);
   } finally {
     server.close();
   }

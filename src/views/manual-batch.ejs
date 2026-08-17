@@ -8,6 +8,7 @@
       body { font-family: Arial, sans-serif; margin: 0; padding: 1rem; }
       main { max-width: 80rem; margin: 0 auto; }
       form { display: grid; gap: 1rem; }
+      nav { margin-bottom: 1rem; }
       .toolbar, .row-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
       .errors { border: 1px solid #b33; background: #fff6f6; padding: 1rem; }
       .batch-grid { display: grid; gap: 1rem; }
@@ -16,6 +17,7 @@
       label { display: grid; gap: 0.25rem; font-weight: 600; }
       input, select, button { font: inherit; padding: 0.5rem; }
       .subtle { color: #555; margin-top: 0; }
+      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
       @media (min-width: 60rem) {
         .field-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       }
@@ -23,6 +25,7 @@
   </head>
   <body>
     <main>
+      <nav><a href="/">Back to home</a></nav>
       <h1><%= title %></h1>
       <p class="subtle">Create and revise draft rows before later review and confirmation.</p>
 
@@ -59,27 +62,38 @@
             <article class="batch-row">
               <div class="row-actions">
                 <strong>Row <%= index + 1 %></strong>
-                <button type="submit" name="action" value="move-up">Move up</button>
-                <button type="submit" name="action" value="move-down">Move down</button>
-                <button type="submit" name="action" value="duplicate-row">Duplicate</button>
-                <button type="submit" name="action" value="remove-row">Remove</button>
-                <input type="hidden" name="rowIndex" value="<%= index %>" />
+                <button type="submit" name="action" value="move-up" aria-label="Move row <%= index + 1 %> up">
+                  <span class="sr-only">Move row <%= index + 1 %> up</span>Move up
+                </button>
+                <button type="submit" name="action" value="move-down" aria-label="Move row <%= index + 1 %> down">
+                  <span class="sr-only">Move row <%= index + 1 %> down</span>Move down
+                </button>
+                <button type="submit" name="action" value="duplicate-row" aria-label="Duplicate row <%= index + 1 %>">
+                  <span class="sr-only">Duplicate row <%= index + 1 %></span>Duplicate
+                </button>
+                <button type="submit" name="action" value="remove-row" aria-label="Remove row <%= index + 1 %>">
+                  <span class="sr-only">Remove row <%= index + 1 %></span>Remove
+                </button>
+                <button type="submit" name="action" value="enter-row" aria-label="Advance from row <%= index + 1 %>">
+                  <span class="sr-only">Advance from row <%= index + 1 %></span>Enter advances
+                </button>
+                <input type="hidden" name="actionRowIndex" value="<%= index %>" />
               </div>
 
               <div class="field-grid">
                 <label>
                   Name
-                  <input name="rows[<%= index %>][name]" value="<%= row.name %>" />
+                  <input name="rows[<%= index %>][name]" value="<%= row.name %>" data-enter-target="name" />
                 </label>
 
                 <label>
                   Quantity
-                  <input name="rows[<%= index %>][quantity]" inputmode="decimal" value="<%= row.quantity %>" />
+                  <input name="rows[<%= index %>][quantity]" inputmode="decimal" value="<%= row.quantity %>" data-enter-target="quantity" />
                 </label>
 
                 <label>
                   Unit
-                  <select name="rows[<%= index %>][unit]">
+                  <select name="rows[<%= index %>][unit]" data-enter-target="unit">
                     <option value="">No unit</option>
                     <% units.forEach((unit) => { %>
                       <option value="<%= unit %>" <%= row.unit === unit ? 'selected' : '' %>><%= unit %></option>
@@ -89,7 +103,7 @@
 
                 <label>
                   Location
-                  <select name="rows[<%= index %>][location]">
+                  <select name="rows[<%= index %>][location]" data-enter-target="location">
                     <option value="">No location yet</option>
                     <% locations.forEach((location) => { %>
                       <option value="<%= location %>" <%= row.location === location ? 'selected' : '' %>><%= location %></option>
@@ -99,12 +113,12 @@
 
                 <label>
                   Expiration date
-                  <input type="date" name="rows[<%= index %>][expirationDate]" value="<%= row.expirationDate %>" />
+                  <input type="date" name="rows[<%= index %>][expirationDate]" value="<%= row.expirationDate %>" data-enter-target="expirationDate" />
                 </label>
 
                 <label>
                   Date type
-                  <select name="rows[<%= index %>][dateType]">
+                  <select name="rows[<%= index %>][dateType]" data-enter-target="dateType">
                     <option value="">No date type</option>
                     <% dateTypes.forEach((dateType) => { %>
                       <option value="<%= dateType %>" <%= row.dateType === dateType ? 'selected' : '' %>><%= dateType %></option>
@@ -116,6 +130,55 @@
           <% }) %>
         </section>
       </form>
+      <script>
+        (function () {
+          const form = document.querySelector('form[action="/batches/manual"]');
+          if (!form) return;
+
+          form.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) {
+              return;
+            }
+
+            const target = event.target;
+            if (!target || !target.name || !target.name.startsWith('rows[')) {
+              return;
+            }
+
+            event.preventDefault();
+            const match = target.name.match(/^rows\[(\d+)\]/);
+            if (!match) {
+              return;
+            }
+
+            const rowIndex = Number(match[1]);
+            const currentRowTargets = Array.from(form.querySelectorAll(`[name^="rows[${rowIndex}]"][data-enter-target]`));
+            const currentIndex = currentRowTargets.indexOf(target);
+            const nextInRow = currentRowTargets[currentIndex + 1];
+            if (nextInRow) {
+              nextInRow.focus();
+              return;
+            }
+
+            const nextRowFirstField = form.querySelector(`[name="rows[${rowIndex + 1}][name]"]`);
+            if (nextRowFirstField) {
+              nextRowFirstField.focus();
+              return;
+            }
+
+            const actionInput = form.querySelector('input[name="actionRowIndex"]');
+            if (actionInput) {
+              actionInput.value = String(rowIndex);
+            }
+            const submitter = form.querySelector('button[name="action"][value="add-row"]');
+            if (submitter && typeof form.requestSubmit === 'function') {
+              form.requestSubmit(submitter);
+            } else {
+              form.submit();
+            }
+          });
+        })();
+      </script>
     </main>
   </body>
   </html>

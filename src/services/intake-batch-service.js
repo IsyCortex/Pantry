@@ -48,8 +48,8 @@ async function getManualDraftBatch(batchId) {
   };
 }
 
-async function saveManualDraftBatch({ batchId, rows, defaultLocation }) {
-  const validation = normalizeDraftRows(rows, defaultLocation || null);
+async function saveManualDraftBatch({ batchId, rows }) {
+  const validation = normalizeDraftRows(rows);
   if (!validation.valid) {
     throw createValidationError(validation.errors);
   }
