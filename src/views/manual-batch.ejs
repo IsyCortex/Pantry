@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= title %></title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 0; padding: 1rem; }
+      main { max-width: 80rem; margin: 0 auto; }
+      form { display: grid; gap: 1rem; }
+      .toolbar, .row-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+      .errors { border: 1px solid #b33; background: #fff6f6; padding: 1rem; }
+      .batch-grid { display: grid; gap: 1rem; }
+      .batch-row { border: 1px solid #ccc; border-radius: 0.5rem; padding: 1rem; display: grid; gap: 0.75rem; }
+      .field-grid { display: grid; gap: 0.75rem; }
+      label { display: grid; gap: 0.25rem; font-weight: 600; }
+      input, select, button { font: inherit; padding: 0.5rem; }
+      .subtle { color: #555; margin-top: 0; }
+      @media (min-width: 60rem) {
+        .field-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1><%= title %></h1>
+      <p class="subtle">Create and revise draft rows before later review and confirmation.</p>
+
+      <% if (errors.length > 0) { %>
+        <section class="errors">
+          <h2>Validation errors</h2>
+          <ul>
+            <% errors.forEach((error) => { %>
+              <li><%= error %></li>
+            <% }) %>
+          </ul>
+        </section>
+      <% } %>
+
+      <form method="post" action="/batches/manual">
+        <input type="hidden" name="batchId" value="<%= batchId %>" />
+
+        <div class="toolbar">
+          <label>
+            Default location for newly created rows
+            <select name="defaultLocation">
+              <option value="">No default</option>
+              <% locations.forEach((location) => { %>
+                <option value="<%= location %>" <%= defaultLocation === location ? 'selected' : '' %>><%= location %></option>
+              <% }) %>
+            </select>
+          </label>
+          <button type="submit" name="action" value="add-row">Add row</button>
+          <button type="submit" name="action" value="save">Save draft batch</button>
+        </div>
+
+        <section class="batch-grid">
+          <% rows.forEach((row, index) => { %>
+            <article class="batch-row">
+              <div class="row-actions">
+                <strong>Row <%= index + 1 %></strong>
+                <button type="submit" name="action" value="move-up">Move up</button>
+                <button type="submit" name="action" value="move-down">Move down</button>
+                <button type="submit" name="action" value="duplicate-row">Duplicate</button>
+                <button type="submit" name="action" value="remove-row">Remove</button>
+                <input type="hidden" name="rowIndex" value="<%= index %>" />
+              </div>
+
+              <div class="field-grid">
+                <label>
+                  Name
+                  <input name="rows[<%= index %>][name]" value="<%= row.name %>" />
+                </label>
+
+                <label>
+                  Quantity
+                  <input name="rows[<%= index %>][quantity]" inputmode="decimal" value="<%= row.quantity %>" />
+                </label>
+
+                <label>
+                  Unit
+                  <select name="rows[<%= index %>][unit]">
+                    <option value="">No unit</option>
+                    <% units.forEach((unit) => { %>
+                      <option value="<%= unit %>" <%= row.unit === unit ? 'selected' : '' %>><%= unit %></option>
+                    <% }) %>
+                  </select>
+                </label>
+
+                <label>
+                  Location
+                  <select name="rows[<%= index %>][location]">
+                    <option value="">No location yet</option>
+                    <% locations.forEach((location) => { %>
+                      <option value="<%= location %>" <%= row.location === location ? 'selected' : '' %>><%= location %></option>
+                    <% }) %>
+                  </select>
+                </label>
+
+                <label>
+                  Expiration date
+                  <input type="date" name="rows[<%= index %>][expirationDate]" value="<%= row.expirationDate %>" />
+                </label>
+
+                <label>
+                  Date type
+                  <select name="rows[<%= index %>][dateType]">
+                    <option value="">No date type</option>
+                    <% dateTypes.forEach((dateType) => { %>
+                      <option value="<%= dateType %>" <%= row.dateType === dateType ? 'selected' : '' %>><%= dateType %></option>
+                    <% }) %>
+                  </select>
+                </label>
+              </div>
+            </article>
+          <% }) %>
+        </section>
+      </form>
+    </main>
+  </body>
+  </html>
