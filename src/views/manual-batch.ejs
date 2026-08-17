@@ -62,22 +62,22 @@
             <article class="batch-row">
               <div class="row-actions">
                 <strong>Row <%= index + 1 %></strong>
-                <button type="submit" name="action" value="move-up" aria-label="Move row <%= index + 1 %> up">
+                <button type="submit" name="action" value="move-up" name="action" formaction="/batches/manual" aria-label="Move row <%= index + 1 %> up">
                   <span class="sr-only">Move row <%= index + 1 %> up</span>Move up
                 </button>
-                <button type="submit" name="action" value="move-down" aria-label="Move row <%= index + 1 %> down">
+                <button type="submit" name="action" value="move-down" formaction="/batches/manual" name="action" aria-label="Move row <%= index + 1 %> down">
                   <span class="sr-only">Move row <%= index + 1 %> down</span>Move down
                 </button>
-                <button type="submit" name="action" value="duplicate-row" aria-label="Duplicate row <%= index + 1 %>">
+                <button type="submit" name="action" value="duplicate-row" formaction="/batches/manual" name="action" aria-label="Duplicate row <%= index + 1 %>">
                   <span class="sr-only">Duplicate row <%= index + 1 %></span>Duplicate
                 </button>
-                <button type="submit" name="action" value="remove-row" aria-label="Remove row <%= index + 1 %>">
+                <button type="submit" name="action" value="remove-row" formaction="/batches/manual" name="action" aria-label="Remove row <%= index + 1 %>">
                   <span class="sr-only">Remove row <%= index + 1 %></span>Remove
                 </button>
-                <button type="submit" name="action" value="enter-row" aria-label="Advance from row <%= index + 1 %>">
+                <button type="submit" name="action" value="enter-row" formaction="/batches/manual" name="action" aria-label="Advance from row <%= index + 1 %>">
                   <span class="sr-only">Advance from row <%= index + 1 %></span>Enter advances
                 </button>
-                <input type="hidden" name="actionRowIndex" value="<%= index %>" />
+                <button type="submit" class="sr-only" name="actionRowIndex" value="<%= index %>" data-row-submit-index="<%= index %>">row-submit-index</button>
               </div>
 
               <div class="field-grid">
@@ -166,11 +166,7 @@
               return;
             }
 
-            const actionInput = form.querySelector('input[name="actionRowIndex"]');
-            if (actionInput) {
-              actionInput.value = String(rowIndex);
-            }
-            const submitter = form.querySelector('button[name="action"][value="add-row"]');
+            const submitter = form.querySelector(`button[data-row-submit-index="${rowIndex}"]`) || form.querySelector('button[name="action"][value="add-row"]');
             if (submitter && typeof form.requestSubmit === 'function') {
               form.requestSubmit(submitter);
             } else {

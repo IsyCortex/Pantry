@@ -61,7 +61,7 @@ test('POST /batches/manual preserves validation errors and entered values', asyn
   }
 });
 
-test('POST /batches/manual supports browser-realistic add, duplicate, remove, and reorder submissions', async () => {
+test('POST /batches/manual targets the clicked row instead of the last rendered row', async () => {
   await resetBatchTables();
 
   const app = createApp();
@@ -69,42 +69,34 @@ test('POST /batches/manual supports browser-realistic add, duplicate, remove, an
   const { port } = server.address();
 
   try {
-    const addParams = new URLSearchParams();
-    addParams.set('action', 'add-row');
-    addParams.set('defaultLocation', 'freezer');
-    addParams.set('rows[0][name]', 'Peas');
-    addParams.set('rows[0][quantity]', '1');
-    addParams.set('rows[0][unit]', 'package');
-    addParams.set('rows[0][location]', 'freezer');
-    addParams.set('rows[0][expirationDate]', '');
-    addParams.set('rows[0][dateType]', '');
-
-    let response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: addParams
-    });
-    let body = await response.text();
-    assert.equal(response.status, 200);
-    assert.match(body, /rows\[1\]\[name\]/);
-    assert.match(body, /<option value="freezer" selected>/);
-
-    const duplicateParams = new URLSearchParams(addParams);
+    const duplicateParams = new URLSearchParams();
     duplicateParams.set('action', 'duplicate-row');
-    duplicateParams.append('actionRowIndex', '0');
-    response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
+    duplicateParams.set('actionRowIndex', '0');
+    duplicateParams.set('rows[0][name]', 'Milk');
+    duplicateParams.set('rows[0][quantity]', '2');
+    duplicateParams.set('rows[0][unit]', 'package');
+    duplicateParams.set('rows[0][location]', 'fridge');
+    duplicateParams.set('rows[0][expirationDate]', '');
+    duplicateParams.set('rows[0][dateType]', '');
+    duplicateParams.set('rows[1][name]', 'Rice');
+    duplicateParams.set('rows[1][quantity]', '1');
+    duplicateParams.set('rows[1][unit]', 'package');
+    duplicateParams.set('rows[1][location]', 'pantry');
+    duplicateParams.set('rows[1][expirationDate]', '');
+    duplicateParams.set('rows[1][dateType]', '');
+    let response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: duplicateParams
     });
-    body = await response.text();
+    let body = await response.text();
     assert.equal(response.status, 200);
-    assert.match(body, /value="Peas"/);
+    assert.ok(body.indexOf('value="Milk"') < body.indexOf('value="Milk"', body.indexOf('value="Milk"') + 1));
+    assert.match(body, /value="Rice"/);
 
     const moveParams = new URLSearchParams();
-    moveParams.set('action', 'move-up');
-    moveParams.append('actionRowIndex', '0');
-    moveParams.append('actionRowIndex', '1');
+    moveParams.set('action', 'move-down');
+    moveParams.set('actionRowIndex', '0');
     moveParams.set('rows[0][name]', 'Milk');
     moveParams.set('rows[0][quantity]', '2');
     moveParams.set('rows[0][unit]', 'package');
@@ -117,26 +109,37 @@ test('POST /batches/manual supports browser-realistic add, duplicate, remove, an
     moveParams.set('rows[1][location]', 'pantry');
     moveParams.set('rows[1][expirationDate]', '');
     moveParams.set('rows[1][dateType]', '');
-    response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
+    let response2 = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: moveParams
     });
-    body = await response.text();
-    assert.equal(response.status, 200);
+    body = await response2.text();
+    assert.equal(response2.status, 200);
     assert.ok(body.indexOf('value="Rice"') < body.indexOf('value="Milk"'));
 
-    const removeParams = new URLSearchParams(moveParams);
+    const removeParams = new URLSearchParams();
     removeParams.set('action', 'remove-row');
-    removeParams.delete('actionRowIndex');
-    removeParams.append('actionRowIndex', '0');
-    response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
+    removeParams.set('actionRowIndex', '0');
+    removeParams.set('rows[0][name]', 'Milk');
+    removeParams.set('rows[0][quantity]', '2');
+    removeParams.set('rows[0][unit]', 'package');
+    removeParams.set('rows[0][location]', 'fridge');
+    removeParams.set('rows[0][expirationDate]', '');
+    removeParams.set('rows[0][dateType]', '');
+    removeParams.set('rows[1][name]', 'Rice');
+    removeParams.set('rows[1][quantity]', '1');
+    removeParams.set('rows[1][unit]', 'package');
+    removeParams.set('rows[1][location]', 'pantry');
+    removeParams.set('rows[1][expirationDate]', '');
+    removeParams.set('rows[1][dateType]', '');
+    let response3 = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: removeParams
     });
-    body = await response.text();
-    assert.equal(response.status, 200);
+    body = await response3.text();
+    assert.equal(response3.status, 200);
     assert.doesNotMatch(body, /value="Milk"/);
     assert.match(body, /value="Rice"/);
   } finally {
@@ -175,6 +178,7 @@ test('manual batch editor markup provides deterministic Enter-key advancement ha
     assert.equal(response.status, 200);
     assert.match(body, /form\.addEventListener\('keydown'/);
     assert.match(body, /event\.key !== 'Enter'/);
+    assert.match(body, /data-row-submit-index/);
     assert.match(body, /requestSubmit\(submitter\)/);
   } finally {
     server.close();

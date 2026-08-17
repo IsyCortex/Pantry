@@ -19,11 +19,6 @@ function createEmptyRow(location = '') {
 
 function getActionIndex(body) {
   const raw = body.actionRowIndex;
-  if (Array.isArray(raw)) {
-    const last = raw[raw.length - 1];
-    return Number(last || 0);
-  }
-
   return Number(raw || 0);
 }
 
