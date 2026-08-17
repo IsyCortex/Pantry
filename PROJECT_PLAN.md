@@ -34,6 +34,9 @@
 ## Release and Gitflow responsibilities
 
 - Each milestone is treated as a release.
+- Pantry release tags follow Semantic Versioning in the format `vMAJOR.MINOR.PATCH`.
+- During pre-1.0 development, each completed milestone release increments the minor version, corrective non-milestone releases increment the patch version, and prerelease candidates use suffixes such as `-rc.1` when needed.
+- Release tags must be annotated, must point to the final released commit, and must never be reused or moved after publication.
 - Release preparation begins only after every ticket in the milestone has been accepted and moved to `Done`, and the product owner explicitly authorizes release preparation.
 - During release preparation, the implementation partner verifies milestone tickets, repository state, tests, documentation, and version.
 - The implementation partner prepares the proposed release version, functional release summary, included-ticket list, verification evidence, changelog, annotated tag, and GitHub Release materials.
