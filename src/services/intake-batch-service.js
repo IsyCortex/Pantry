@@ -182,7 +182,7 @@ function createInvalidStateError(message) {
   return error;
 }
 
-async function confirmIntakeBatch(batchId) {
+async function confirmIntakeBatch(batchId, options = {}) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -230,9 +230,10 @@ async function confirmIntakeBatch(batchId) {
     }
 
     const createdItems = [];
+    const inventoryWriter = options.inventoryWriter || createConfirmedInventoryItem;
     for (const row of acceptedRows) {
       const quantity = row.quantity === '' || row.quantity == null ? null : Number(row.quantity);
-      const created = await createConfirmedInventoryItem({
+      const created = await inventoryWriter({
         name: row.name,
         quantity,
         unit: row.unit === '' ? null : row.unit,

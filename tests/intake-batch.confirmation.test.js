@@ -77,6 +77,42 @@ test('revalidates accepted rows and rejects confirmation without partial invento
   assert.equal(inventoryCount.rows[0].count, 0);
 });
 
+test('rolls back already-started confirmation work when a later insert fails', async () => {
+  await resetTables();
+
+  const saved = await saveManualDraftBatch({
+    batchId: null,
+    rows: [
+      { name: 'Milk', quantity: '2', unit: 'package', location: 'fridge', expirationDate: '', dateType: '', accepted: true },
+      { name: 'Peas', quantity: '1', unit: 'package', location: 'freezer', expirationDate: '', dateType: '', accepted: true }
+    ]
+  });
+  await markBatchPendingReview(saved.id);
+
+  let callCount = 0;
+  const { createConfirmedInventoryItem } = require('../src/services/inventory-service');
+
+  await assert.rejects(
+    () => confirmIntakeBatch(saved.id, {
+      inventoryWriter: async (item, client) => {
+        callCount += 1;
+        const created = await createConfirmedInventoryItem(item, client);
+        if (callCount === 2) {
+          throw new Error('CONFIRMATION_INSERT_FAILURE_AFTER_FIRST_SUCCESS');
+        }
+        return created;
+      }
+    }),
+    /CONFIRMATION_INSERT_FAILURE_AFTER_FIRST_SUCCESS/
+  );
+
+  const inventoryCount = await pool.query('SELECT COUNT(*)::int AS count FROM inventory_items');
+  assert.equal(inventoryCount.rows[0].count, 0);
+
+  const batch = await getManualDraftBatch(saved.id);
+  assert.equal(batch.state, 'pending_review');
+});
+
 test('prevents repeat confirmation for already confirmed batches', async () => {
   await resetTables();
 
