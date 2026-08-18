@@ -9,7 +9,16 @@ async function createInventoryItem(item, client = pool) {
     [item.name, item.quantity, item.unit, item.location, item.expirationDate, item.dateType, item.sourceBatchId ?? null]
   );
 
-  return result.rows[0];
+  const row = result.rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return {
+    ...row,
+    id: Number(row.id),
+    source_batch_id: row.source_batch_id == null ? null : Number(row.source_batch_id)
+  };
 }
 
 async function getInventoryItemById(id) {
@@ -20,7 +29,16 @@ async function getInventoryItemById(id) {
     [id]
   );
 
-  return result.rows[0] || null;
+  const row = result.rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return {
+    ...row,
+    id: Number(row.id),
+    source_batch_id: row.source_batch_id == null ? null : Number(row.source_batch_id)
+  };
 }
 
 async function updateInventoryItem(id, item, client = pool) {
@@ -38,7 +56,16 @@ async function updateInventoryItem(id, item, client = pool) {
     [id, item.name, item.quantity, item.unit, item.location, item.expirationDate, item.dateType]
   );
 
-  return result.rows[0] || null;
+  const row = result.rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return {
+    ...row,
+    id: Number(row.id),
+    source_batch_id: row.source_batch_id == null ? null : Number(row.source_batch_id)
+  };
 }
 
 async function transitionInventoryLifecycle(id, lifecycleStatus, client = pool) {
@@ -52,7 +79,16 @@ async function transitionInventoryLifecycle(id, lifecycleStatus, client = pool) 
     [id, lifecycleStatus]
   );
 
-  return result.rows[0] || null;
+  const row = result.rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return {
+    ...row,
+    id: Number(row.id),
+    source_batch_id: row.source_batch_id == null ? null : Number(row.source_batch_id)
+  };
 }
 
 async function listActiveInventoryItems() {

@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS inventory_items (
-  id SERIAL PRIMARY KEY,
+  id BIGSERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   quantity NUMERIC NULL,
   unit TEXT NULL,
