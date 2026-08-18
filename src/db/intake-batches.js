@@ -52,6 +52,36 @@ async function getDraftBatchById(batchId, client = pool) {
   };
 }
 
+async function getBatchForConfirmation(batchId, client = pool) {
+  const batchResult = await client.query(
+    `SELECT id, source_type, state, created_at, confirmed_at
+     FROM intake_batches
+     WHERE id = $1
+     FOR UPDATE`,
+    [batchId]
+  );
+
+  const batch = batchResult.rows[0];
+  if (!batch) {
+    return null;
+  }
+
+  const itemResult = await client.query(
+    `SELECT id, batch_id, position, name, quantity, unit, location,
+            expiration_date::text AS expiration_date,
+            date_type, attention_reasons, accepted
+     FROM intake_batch_items
+     WHERE batch_id = $1
+     ORDER BY position ASC, id ASC`,
+    [batchId]
+  );
+
+  return {
+    ...batch,
+    rows: itemResult.rows
+  };
+}
+
 async function findLatestOpenManualBatch(client = pool) {
   const result = await client.query(
     `SELECT id, source_type, state, created_at, confirmed_at
@@ -92,6 +122,7 @@ module.exports = {
   createManualIntakeBatch,
   replaceDraftBatchItems,
   getDraftBatchById,
+  getBatchForConfirmation,
   findLatestOpenManualBatch,
   updateBatchState,
   setBatchConfirmed

@@ -1,7 +1,7 @@
 const pool = require('./pool');
 
 async function createInventoryItem(item, client = pool) {
-  const result = await pool.query(
+  const result = await client.query(
     `INSERT INTO inventory_items (
       name, quantity, unit, location, expiration_date, date_type, source_batch_id
     ) VALUES ($1, $2, $3, $4, $5, $6, $7)

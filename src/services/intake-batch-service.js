@@ -3,6 +3,7 @@ const {
   createManualIntakeBatch,
   replaceDraftBatchItems,
   getDraftBatchById,
+  getBatchForConfirmation,
   findLatestOpenManualBatch,
   updateBatchState,
   setBatchConfirmed
@@ -182,34 +183,51 @@ function createInvalidStateError(message) {
 }
 
 async function confirmIntakeBatch(batchId) {
-  const batch = await getManualDraftBatch(batchId);
-  if (!batch) {
-    const error = new Error('NOT_FOUND');
-    error.code = 'NOT_FOUND';
-    throw error;
-  }
-
-  if (batch.state !== 'pending_review') {
-    throw createInvalidStateError('Batch is not ready for confirmation');
-  }
-
-  const acceptedRows = batch.rows.filter((row) => row.accepted !== false);
-  const invalidAcceptedRows = acceptedRows.filter((row) => {
-    const missingRequired = !hasValue(row.name) || !hasValue(row.location);
-    const fieldErrors = createFieldErrors(row);
-    return missingRequired || Object.keys(fieldErrors).length > 0;
-  });
-
-  if (invalidAcceptedRows.length > 0) {
-    const error = new Error('VALIDATION_FAILED');
-    error.code = 'VALIDATION_FAILED';
-    error.details = invalidAcceptedRows.map((row) => `Accepted row ${row.position + 1} is invalid for confirmation`);
-    throw error;
-  }
-
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    const batch = await getBatchForConfirmation(batchId, client);
+    if (!batch) {
+      const error = new Error('NOT_FOUND');
+      error.code = 'NOT_FOUND';
+      throw error;
+    }
+
+    if (batch.state !== 'pending_review') {
+      throw createInvalidStateError('Batch is not ready for confirmation');
+    }
+
+    const hydratedBatch = {
+      id: Number(batch.id),
+      state: batch.state,
+      sourceType: batch.source_type,
+      rows: buildReviewRows(batch.rows.map((row) => ({
+        id: Number(row.id),
+        position: row.position,
+        name: row.name ?? '',
+        quantity: row.quantity ?? '',
+        unit: row.unit ?? '',
+        location: row.location ?? '',
+        expirationDate: row.expiration_date ?? '',
+        dateType: row.date_type ?? '',
+        accepted: row.accepted !== false
+      })))
+    };
+
+    const acceptedRows = hydratedBatch.rows.filter((row) => row.accepted !== false);
+    const invalidAcceptedRows = acceptedRows.filter((row) => {
+      const missingRequired = !hasValue(row.name) || !hasValue(row.location);
+      const fieldErrors = createFieldErrors(row);
+      return missingRequired || Object.keys(fieldErrors).length > 0;
+    });
+
+    if (invalidAcceptedRows.length > 0) {
+      const error = new Error('VALIDATION_FAILED');
+      error.code = 'VALIDATION_FAILED';
+      error.details = invalidAcceptedRows.map((row) => `Accepted row ${row.position + 1} is invalid for confirmation`);
+      throw error;
+    }
 
     const createdItems = [];
     for (const row of acceptedRows) {
@@ -221,19 +239,19 @@ async function confirmIntakeBatch(batchId) {
         location: row.location,
         expirationDate: row.expirationDate === '' ? null : row.expirationDate,
         dateType: row.dateType === '' ? null : row.dateType,
-        sourceBatchId: batch.id
+        sourceBatchId: hydratedBatch.id
       }, client);
       createdItems.push(created);
     }
 
-    const confirmed = await setBatchConfirmed(batch.id, client);
+    const confirmed = await setBatchConfirmed(hydratedBatch.id, client);
     if (!confirmed) {
       throw createInvalidStateError('Batch confirmation could not be applied');
     }
 
     await client.query('COMMIT');
     return {
-      batchId: batch.id,
+      batchId: hydratedBatch.id,
       state: confirmed.state,
       createdItems
     };
