@@ -90,3 +90,112 @@ test('retrieval failure produces a safe error page', async () => {
     server.close();
   }
 });
+
+test('GET /inventory/:id/edit renders the edit interface for a confirmed item', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Milk', quantity: 2, unit: 'package', location: 'fridge', expirationDate: '2026-08-20', dateType: 'best_before', lifecycleStatus: 'active' });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/inventory/1/edit`);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /Edit inventory item/);
+    assert.match(body, /Mark used up/);
+    assert.match(body, /Mark discarded/);
+  } finally {
+    server.close();
+  }
+});
+
+test('POST /inventory/:id/edit preserves submitted values when validation fails', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Milk', quantity: 2, unit: 'package', location: 'fridge', expirationDate: '2026-08-20', dateType: 'best_before', lifecycleStatus: 'active' });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const params = new URLSearchParams();
+    params.set('name', ' ');
+    params.set('quantity', '-1');
+    params.set('unit', 'package');
+    params.set('location', 'garage');
+    params.set('expirationDate', '');
+    params.set('dateType', '');
+
+    const response = await fetch(`http://127.0.0.1:${port}/inventory/1/edit`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: params
+    });
+    const body = await response.text();
+    assert.equal(response.status, 400);
+    assert.match(body, /Validation errors/);
+    assert.match(body, /value="-1"/);
+  } finally {
+    server.close();
+  }
+});
+
+test('removal actions follow the protected user-facing path and remove items from active inventory', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Milk', quantity: 2, unit: 'package', location: 'fridge', expirationDate: null, dateType: null, lifecycleStatus: 'active' });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    let response = await fetch(`http://127.0.0.1:${port}/inventory/1/use-up/confirm`, { method: 'POST' });
+    assert.equal(response.status, 200);
+
+    response = await fetch(`http://127.0.0.1:${port}/inventory`);
+    let body = await response.text();
+    assert.doesNotMatch(body, /Milk/);
+
+    await resetInventoryTable();
+    await insertInventoryItem({ name: 'Soup', quantity: 1, unit: 'package', location: 'pantry', expirationDate: null, dateType: null, lifecycleStatus: 'active' });
+
+    response = await fetch(`http://127.0.0.1:${port}/inventory/1/discard/confirm`, { method: 'POST' });
+    assert.equal(response.status, 200);
+
+    response = await fetch(`http://127.0.0.1:${port}/inventory`);
+    body = await response.text();
+    assert.doesNotMatch(body, /Soup/);
+  } finally {
+    server.close();
+  }
+});
+
+test('ordinary edit route does not remove or reactivate lifecycle state', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Milk', quantity: 2, unit: 'package', location: 'fridge', expirationDate: null, dateType: null, lifecycleStatus: 'active' });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const params = new URLSearchParams();
+    params.set('name', 'Oat Milk');
+    params.set('quantity', '3');
+    params.set('unit', 'package');
+    params.set('location', 'pantry');
+    params.set('expirationDate', '');
+    params.set('dateType', '');
+
+    const response = await fetch(`http://127.0.0.1:${port}/inventory/1/edit`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: params
+    });
+    assert.equal(response.status, 200);
+
+    const row = await pool.query('SELECT lifecycle_status, removed_at FROM inventory_items WHERE id = 1');
+    assert.equal(row.rows[0].lifecycle_status, 'active');
+    assert.equal(row.rows[0].removed_at, null);
+  } finally {
+    server.close();
+  }
+});
