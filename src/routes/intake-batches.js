@@ -4,7 +4,8 @@ const {
   saveManualDraftBatch,
   getManualDraftBatch,
   buildReviewRows,
-  markBatchPendingReview
+  markBatchPendingReview,
+  confirmIntakeBatch
 } = require('../services/intake-batch-service');
 const { VALID_LOCATIONS, VALID_UNITS, VALID_DATE_TYPES } = require('../validation/intake-batch');
 
@@ -243,6 +244,25 @@ function createIntakeBatchRouter() {
           }),
           structuredFieldErrors: buildReviewErrorDetails(rows)
         });
+        return;
+      }
+
+      next(error);
+    }
+  });
+
+  router.post('/batches/:batchId/confirm', async (req, res, next) => {
+    try {
+      const confirmation = await confirmIntakeBatch(Number(req.params.batchId));
+      res.status(200).json({ status: 'ok', batchId: confirmation.batchId, createdItemCount: confirmation.createdItems.length });
+    } catch (error) {
+      if (error.code === 'VALIDATION_FAILED') {
+        res.status(400).json({ status: 'error', code: error.code, details: error.details });
+        return;
+      }
+
+      if (error.code === 'INVALID_STATE_TRANSITION') {
+        res.status(409).json({ status: 'error', code: error.code, message: error.message });
         return;
       }
 

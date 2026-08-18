@@ -1,12 +1,12 @@
 const pool = require('./pool');
 
-async function createInventoryItem(item) {
+async function createInventoryItem(item, client = pool) {
   const result = await pool.query(
     `INSERT INTO inventory_items (
-      name, quantity, unit, location, expiration_date, date_type
-    ) VALUES ($1, $2, $3, $4, $5, $6)
+      name, quantity, unit, location, expiration_date, date_type, source_batch_id
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING id, name, quantity, unit, location, expiration_date, date_type, lifecycle_status, source_batch_id, created_at, updated_at, removed_at`,
-    [item.name, item.quantity, item.unit, item.location, item.expirationDate, item.dateType]
+    [item.name, item.quantity, item.unit, item.location, item.expirationDate, item.dateType, item.sourceBatchId ?? null]
   );
 
   return result.rows[0];

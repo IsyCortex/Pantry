@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   location TEXT NOT NULL,
   expiration_date DATE NULL,
   date_type TEXT NULL,
+  source_batch_id BIGINT NULL REFERENCES intake_batches(id),
   lifecycle_status TEXT NOT NULL DEFAULT 'active',
   source_batch_id INTEGER NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

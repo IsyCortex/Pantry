@@ -76,10 +76,23 @@ async function updateBatchState(batchId, state, client = pool) {
   return result.rows[0] || null;
 }
 
+async function setBatchConfirmed(batchId, client = pool) {
+  const result = await client.query(
+    `UPDATE intake_batches
+     SET state = 'confirmed', confirmed_at = NOW()
+     WHERE id = $1 AND state = 'pending_review'
+     RETURNING id, source_type, state, created_at, confirmed_at`,
+    [batchId]
+  );
+
+  return result.rows[0] || null;
+}
+
 module.exports = {
   createManualIntakeBatch,
   replaceDraftBatchItems,
   getDraftBatchById,
   findLatestOpenManualBatch,
-  updateBatchState
+  updateBatchState,
+  setBatchConfirmed
 };
