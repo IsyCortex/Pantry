@@ -62,11 +62,11 @@
         <button type="submit">Save changes</button>
       </form>
 
-      <form method="post" action="/inventory/<%= item.id %>/use-up/confirm">
+      <form method="get" action="/inventory/<%= item.id %>/use-up">
         <button type="submit">Mark used up</button>
       </form>
 
-      <form method="post" action="/inventory/<%= item.id %>/discard/confirm">
+      <form method="get" action="/inventory/<%= item.id %>/discard">
         <button type="submit">Mark discarded</button>
       </form>
     </main>

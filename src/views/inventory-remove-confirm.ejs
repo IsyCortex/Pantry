@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= title %></title>
+  </head>
+  <body>
+    <main>
+      <h1><%= title %></h1>
+      <p>Confirm that you want to mark <strong><%= item.name %></strong> as <%= actionLabel %>.</p>
+      <form method="post" action="/inventory/<%= item.id %>/<%= action %>/confirm">
+        <button type="submit">Confirm <%= actionLabel %></button>
+      </form>
+      <p><a href="/inventory/<%= item.id %>/edit">Cancel</a></p>
+    </main>
+  </body>
+  </html>

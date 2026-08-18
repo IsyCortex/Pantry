@@ -38,6 +38,7 @@
                 <strong><%= item.name %></strong>
                 <span><%= item.location %></span>
               </div>
+              <p><a href="/inventory/<%= item.id %>/edit">Edit item</a></p>
               <% if (item.quantity != null) { %>
                 <p class="meta">Quantity: <%= item.quantity %><% if (item.unit) { %> <%= item.unit %><% } %></p>
               <% } %>

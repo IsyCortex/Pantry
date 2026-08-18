@@ -100,10 +100,40 @@ function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay 
     }
   });
 
+  router.get('/inventory/:id/use-up', async (req, res) => {
+    const item = await getConfirmedInventoryItem(Number(req.params.id));
+    if (!item) {
+      res.status(404).send('Inventory item not found');
+      return;
+    }
+
+    res.status(200).render('inventory-remove-confirm', {
+      title: 'Confirm removal',
+      item,
+      action: 'use-up',
+      actionLabel: 'used up'
+    });
+  });
+
+  router.get('/inventory/:id/discard', async (req, res) => {
+    const item = await getConfirmedInventoryItem(Number(req.params.id));
+    if (!item) {
+      res.status(404).send('Inventory item not found');
+      return;
+    }
+
+    res.status(200).render('inventory-remove-confirm', {
+      title: 'Confirm removal',
+      item,
+      action: 'discard',
+      actionLabel: 'discarded'
+    });
+  });
+
   router.post('/inventory/:id/use-up/confirm', async (req, res) => {
     try {
       await markInventoryItemRemoved(Number(req.params.id), 'used_up');
-      res.redirect('/inventory');
+      res.status(200).redirect('/inventory');
     } catch (error) {
       if (error.code === 'INVALID_STATE_TRANSITION') {
         res.status(409).send(error.message);
@@ -116,7 +146,7 @@ function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay 
   router.post('/inventory/:id/discard/confirm', async (req, res) => {
     try {
       await markInventoryItemRemoved(Number(req.params.id), 'discarded');
-      res.redirect('/inventory');
+      res.status(200).redirect('/inventory');
     } catch (error) {
       if (error.code === 'INVALID_STATE_TRANSITION') {
         res.status(409).send(error.message);

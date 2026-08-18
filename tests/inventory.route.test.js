@@ -29,6 +29,7 @@ test('displays active inventory items and excludes inactive items', async () => 
     const body = await response.text();
     assert.equal(response.status, 200);
     assert.match(body, /Milk/);
+    assert.match(body, /Edit item/);
     assert.doesNotMatch(body, /Bread/);
     assert.doesNotMatch(body, /Soup/);
   } finally {
@@ -148,15 +149,26 @@ test('removal actions follow the protected user-facing path and remove items fro
   const server = app.listen(0);
   const { port } = server.address();
   try {
-    let response = await fetch(`http://127.0.0.1:${port}/inventory/1/use-up/confirm`, { method: 'POST' });
+    let response = await fetch(`http://127.0.0.1:${port}/inventory/1/use-up`);
+    let body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /Confirm that you want to mark/);
+    assert.match(body, /Confirm used up/);
+
+    response = await fetch(`http://127.0.0.1:${port}/inventory/1/use-up/confirm`, { method: 'POST' });
     assert.equal(response.status, 200);
 
     response = await fetch(`http://127.0.0.1:${port}/inventory`);
-    let body = await response.text();
+    body = await response.text();
     assert.doesNotMatch(body, /Milk/);
 
     await resetInventoryTable();
     await insertInventoryItem({ name: 'Soup', quantity: 1, unit: 'package', location: 'pantry', expirationDate: null, dateType: null, lifecycleStatus: 'active' });
+
+    response = await fetch(`http://127.0.0.1:${port}/inventory/1/discard`);
+    body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /Confirm discarded/);
 
     response = await fetch(`http://127.0.0.1:${port}/inventory/1/discard/confirm`, { method: 'POST' });
     assert.equal(response.status, 200);
