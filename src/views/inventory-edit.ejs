@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= title %></title>
+  </head>
+  <body>
+    <main>
+      <h1><%= title %></h1>
+
+      <% if (errors && errors.length > 0) { %>
+        <section>
+          <h2>Validation errors</h2>
+          <ul>
+            <% errors.forEach((error) => { %>
+              <li><%= error %></li>
+            <% }) %>
+          </ul>
+        </section>
+      <% } %>
+
+      <form method="post" action="/inventory/<%= item.id %>/edit">
+        <label>
+          Name
+          <input name="name" value="<%= item.name %>" />
+        </label>
+        <label>
+          Quantity
+          <input name="quantity" value="<%= item.quantity %>" />
+        </label>
+        <label>
+          Unit
+          <select name="unit">
+            <option value="">No unit</option>
+            <% units.forEach((unit) => { %>
+              <option value="<%= unit %>" <%= item.unit === unit ? 'selected' : '' %>><%= unit %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label>
+          Location
+          <select name="location">
+            <% locations.forEach((location) => { %>
+              <option value="<%= location %>" <%= item.location === location ? 'selected' : '' %>><%= location %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label>
+          Expiration date
+          <input type="date" name="expirationDate" value="<%= item.expirationDate %>" />
+        </label>
+        <label>
+          Date type
+          <select name="dateType">
+            <option value="">No date type</option>
+            <% dateTypes.forEach((dateType) => { %>
+              <option value="<%= dateType %>" <%= item.dateType === dateType ? 'selected' : '' %>><%= dateType %></option>
+            <% }) %>
+          </select>
+        </label>
+        <button type="submit">Save changes</button>
+      </form>
+
+      <form method="post" action="/inventory/<%= item.id %>/use-up/confirm">
+        <button type="submit">Mark used up</button>
+      </form>
+
+      <form method="post" action="/inventory/<%= item.id %>/discard/confirm">
+        <button type="submit">Mark discarded</button>
+      </form>
+    </main>
+  </body>
+  </html>

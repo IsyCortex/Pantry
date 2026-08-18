@@ -1,4 +1,4 @@
-const { createInventoryItem, getInventoryItemById, listActiveInventoryItems } = require('../db/inventory');
+const { createInventoryItem, getInventoryItemById, updateInventoryItem, transitionInventoryLifecycle, listActiveInventoryItems } = require('../db/inventory');
 const { validateInventoryItem } = require('../validation/inventory');
 
 async function createConfirmedInventoryItem(input, client) {
@@ -21,6 +21,56 @@ async function createConfirmedInventoryItem(input, client) {
 
 async function getConfirmedInventoryItem(id) {
   return getInventoryItemById(id);
+}
+
+function createNotFoundError() {
+  const error = new Error('NOT_FOUND');
+  error.code = 'NOT_FOUND';
+  return error;
+}
+
+function createInvalidStateError(message) {
+  const error = new Error(message);
+  error.code = 'INVALID_STATE_TRANSITION';
+  return error;
+}
+
+async function updateConfirmedInventoryItem(id, input) {
+  const existing = await getInventoryItemById(id);
+  if (!existing) {
+    throw createNotFoundError();
+  }
+
+  if (existing.lifecycle_status !== 'active') {
+    throw createInvalidStateError('Only active inventory items can be edited');
+  }
+
+  const validation = validateInventoryItem(input);
+  if (!validation.valid) {
+    const error = new Error('VALIDATION_FAILED');
+    error.code = 'VALIDATION_FAILED';
+    error.details = validation.errors;
+    throw error;
+  }
+
+  return updateInventoryItem(id, validation.value);
+}
+
+async function markInventoryItemRemoved(id, lifecycleStatus) {
+  const existing = await getInventoryItemById(id);
+  if (!existing) {
+    throw createNotFoundError();
+  }
+
+  if (existing.lifecycle_status !== 'active') {
+    throw createInvalidStateError('Only active inventory items can be removed');
+  }
+
+  if (!['used_up', 'discarded'].includes(lifecycleStatus)) {
+    throw createInvalidStateError('Unsupported lifecycle transition');
+  }
+
+  return transitionInventoryLifecycle(id, lifecycleStatus);
 }
 
 function formatDateType(dateType) {
@@ -60,5 +110,7 @@ async function getActiveInventoryForDisplay() {
 module.exports = {
   createConfirmedInventoryItem,
   getConfirmedInventoryItem,
+  updateConfirmedInventoryItem,
+  markInventoryItemRemoved,
   getActiveInventoryForDisplay
 };

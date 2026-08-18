@@ -23,6 +23,38 @@ async function getInventoryItemById(id) {
   return result.rows[0] || null;
 }
 
+async function updateInventoryItem(id, item, client = pool) {
+  const result = await client.query(
+    `UPDATE inventory_items
+     SET name = $2,
+         quantity = $3,
+         unit = $4,
+         location = $5,
+         expiration_date = $6,
+         date_type = $7,
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING id, name, quantity, unit, location, expiration_date, date_type, lifecycle_status, source_batch_id, created_at, updated_at, removed_at`,
+    [id, item.name, item.quantity, item.unit, item.location, item.expirationDate, item.dateType]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function transitionInventoryLifecycle(id, lifecycleStatus, client = pool) {
+  const result = await client.query(
+    `UPDATE inventory_items
+     SET lifecycle_status = $2,
+         removed_at = NOW(),
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING id, name, quantity, unit, location, expiration_date, date_type, lifecycle_status, source_batch_id, created_at, updated_at, removed_at`,
+    [id, lifecycleStatus]
+  );
+
+  return result.rows[0] || null;
+}
+
 async function listActiveInventoryItems() {
   const result = await pool.query(
     `SELECT id, name, quantity, unit, location,
@@ -36,4 +68,10 @@ async function listActiveInventoryItems() {
   return result.rows;
 }
 
-module.exports = { createInventoryItem, getInventoryItemById, listActiveInventoryItems };
+module.exports = {
+  createInventoryItem,
+  getInventoryItemById,
+  updateInventoryItem,
+  transitionInventoryLifecycle,
+  listActiveInventoryItems
+};
