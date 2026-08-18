@@ -1,7 +1,7 @@
 const { createInventoryItem, getInventoryItemById, listActiveInventoryItems } = require('../db/inventory');
 const { validateInventoryItem } = require('../validation/inventory');
 
-async function createConfirmedInventoryItem(input) {
+async function createConfirmedInventoryItem(input, client) {
   const validation = validateInventoryItem(input);
   if (!validation.valid) {
     const error = new Error('VALIDATION_FAILED');
@@ -10,7 +10,13 @@ async function createConfirmedInventoryItem(input) {
     throw error;
   }
 
-  return createInventoryItem(validation.value);
+  return createInventoryItem(
+    {
+      ...validation.value,
+      sourceBatchId: input.sourceBatchId ?? null
+    },
+    client
+  );
 }
 
 async function getConfirmedInventoryItem(id) {

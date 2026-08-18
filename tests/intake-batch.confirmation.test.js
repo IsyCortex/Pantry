@@ -22,6 +22,13 @@ test('confirms accepted valid rows transactionally and records source batch rela
   await markBatchPendingReview(saved.id);
 
   const confirmation = await confirmIntakeBatch(saved.id);
+  const batches = await pool.query('SELECT id, source_type, state, confirmed_at FROM intake_batches ORDER BY id');
+  const batchItems = await pool.query(`SELECT id, batch_id, position, name, quantity, unit, location, expiration_date::text AS expiration_date, date_type, accepted FROM intake_batch_items ORDER BY id`);
+  const inventoryItems = await pool.query(`SELECT id, name, quantity, unit, location, expiration_date::text AS expiration_date, date_type, lifecycle_status, source_batch_id FROM inventory_items ORDER BY id`);
+  console.log('[confirmation-test] saved.id=', saved.id);
+  console.log('[confirmation-test] intake_batches=', JSON.stringify(batches.rows));
+  console.log('[confirmation-test] intake_batch_items=', JSON.stringify(batchItems.rows));
+  console.log('[confirmation-test] inventory_items=', JSON.stringify(inventoryItems.rows));
   assert.equal(confirmation.state, 'confirmed');
   assert.equal(confirmation.createdItems.length, 2);
   assert.equal(confirmation.createdItems[0].source_batch_id, saved.id);
