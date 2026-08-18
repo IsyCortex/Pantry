@@ -76,6 +76,12 @@ test('shows useful empty-state orientation', async () => {
 });
 
 test('retrieval failure produces a safe error page', async () => {
+  const originalConsoleError = console.error;
+  const loggedErrors = [];
+  console.error = (...args) => {
+    loggedErrors.push(args);
+  };
+
   const app = createApp({ inventoryLoader: async () => {
     throw new Error('INVENTORY_TEST_FAILURE');
   }});
@@ -87,8 +93,11 @@ test('retrieval failure produces a safe error page', async () => {
     assert.equal(response.status, 500);
     assert.match(body, /Inventory could not be loaded right now\./);
     assert.doesNotMatch(body, /SELECT|postgres|inventory_items|Error:/i);
+    assert.equal(loggedErrors.length, 1);
+    assert.match(String(loggedErrors[0][0]), /INVENTORY_TEST_FAILURE/);
   } finally {
     server.close();
+    console.error = originalConsoleError;
   }
 });
 
