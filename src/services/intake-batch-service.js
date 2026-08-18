@@ -116,11 +116,11 @@ async function getManualDraftBatch(batchId) {
   }
 
   return {
-    id: batch.id,
+    id: Number(batch.id),
     state: batch.state,
     sourceType: batch.source_type,
     rows: buildReviewRows(batch.rows.map((row) => ({
-      id: row.id,
+      id: Number(row.id),
       position: row.position,
       name: row.name ?? '',
       quantity: row.quantity ?? '',
