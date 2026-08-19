@@ -4,6 +4,16 @@ const pool = require('../src/db/pool');
 const { createConfirmedInventoryItem, getConfirmedInventoryItem, updateConfirmedInventoryItem, markInventoryItemRemoved, getActiveInventoryForDisplay } = require('../src/services/inventory-service');
 const { saveManualDraftBatch, markBatchPendingReview, confirmIntakeBatch } = require('../src/services/intake-batch-service');
 
+async function createReferencedBatchId() {
+  const result = await pool.query(
+    `INSERT INTO intake_batches (source_type, state)
+     VALUES ('manual', 'confirmed')
+     RETURNING id`
+  );
+
+  return Number(result.rows[0].id);
+}
+
 async function resetInventoryTable() {
   await pool.query('TRUNCATE TABLE inventory_items RESTART IDENTITY');
 }
@@ -137,6 +147,8 @@ test('rejects names longer than 120 trimmed characters', async () => {
 
 test('edits an active confirmed inventory item without changing source batch linkage', async () => {
   await resetInventoryTable();
+  await pool.query('TRUNCATE TABLE intake_batch_items, intake_batches RESTART IDENTITY CASCADE');
+  const sourceBatchId = await createReferencedBatchId();
 
   const created = await createConfirmedInventoryItem({
     name: 'Milk',
@@ -145,7 +157,7 @@ test('edits an active confirmed inventory item without changing source batch lin
     location: 'fridge',
     expirationDate: '2026-08-20',
     dateType: 'best_before',
-    sourceBatchId: 7
+    sourceBatchId
   });
 
   const updated = await updateConfirmedInventoryItem(created.id, {
@@ -159,7 +171,7 @@ test('edits an active confirmed inventory item without changing source batch lin
 
   assert.equal(updated.name, 'Oat Milk');
   assert.equal(updated.location, 'pantry');
-  assert.equal(updated.source_batch_id, 7);
+  assert.equal(updated.source_batch_id, sourceBatchId);
 });
 
 test('rejects invalid updates using the same inventory validation rules', async () => {
