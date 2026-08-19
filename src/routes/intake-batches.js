@@ -43,13 +43,14 @@ function parseRows(body) {
   return rows;
 }
 
-function createReviewLocals({ batchId, rows, defaultLocation, errors = [] }) {
+function createReviewLocals({ batchId, rows, defaultLocation, errors = [], notice = null }) {
   return {
     title: 'Review intake batch',
     batchId,
     rows: buildReviewRows(rows),
     defaultLocation,
     errors,
+    notice,
     locations: Array.from(VALID_LOCATIONS),
     units: Array.from(VALID_UNITS),
     dateTypes: Array.from(VALID_DATE_TYPES)
@@ -73,6 +74,7 @@ function createIntakeBatchRouter() {
         rows,
         defaultLocation: '',
         errors: [],
+        notice: null,
         locations: Array.from(VALID_LOCATIONS),
         units: Array.from(VALID_UNITS),
         dateTypes: Array.from(VALID_DATE_TYPES)
@@ -95,6 +97,7 @@ function createIntakeBatchRouter() {
         rows,
         defaultLocation,
         errors: [],
+        notice: 'Row added.',
         locations: Array.from(VALID_LOCATIONS),
         units: Array.from(VALID_UNITS),
         dateTypes: Array.from(VALID_DATE_TYPES)
@@ -111,6 +114,7 @@ function createIntakeBatchRouter() {
         rows,
         defaultLocation,
         errors: [],
+        notice: 'Row duplicated.',
         locations: Array.from(VALID_LOCATIONS),
         units: Array.from(VALID_UNITS),
         dateTypes: Array.from(VALID_DATE_TYPES)
@@ -129,6 +133,7 @@ function createIntakeBatchRouter() {
         rows,
         defaultLocation,
         errors: [],
+        notice: 'Row removed.',
         locations: Array.from(VALID_LOCATIONS),
         units: Array.from(VALID_UNITS),
         dateTypes: Array.from(VALID_DATE_TYPES)
@@ -148,6 +153,7 @@ function createIntakeBatchRouter() {
         rows,
         defaultLocation,
         errors: [],
+        notice: action === 'move-up' ? 'Row moved up.' : 'Row moved down.',
         locations: Array.from(VALID_LOCATIONS),
         units: Array.from(VALID_UNITS),
         dateTypes: Array.from(VALID_DATE_TYPES)
@@ -161,7 +167,8 @@ function createIntakeBatchRouter() {
       return res.status(200).render('batch-review', createReviewLocals({
         batchId: req.body.batchId || '',
         rows,
-        defaultLocation
+        defaultLocation,
+        notice: 'Batch moved to review.'
       }));
     }
 
@@ -177,6 +184,7 @@ function createIntakeBatchRouter() {
         rows: batch.rows.length > 0 ? batch.rows : [createEmptyRow(defaultLocation)],
         defaultLocation,
         errors: [],
+        notice: 'Draft batch saved.',
         locations: Array.from(VALID_LOCATIONS),
         units: Array.from(VALID_UNITS),
         dateTypes: Array.from(VALID_DATE_TYPES)
@@ -189,6 +197,7 @@ function createIntakeBatchRouter() {
           rows: rows.length > 0 ? rows : [createEmptyRow(defaultLocation)],
           defaultLocation,
           errors: error.details,
+          notice: null,
           locations: Array.from(VALID_LOCATIONS),
           units: Array.from(VALID_UNITS),
           dateTypes: Array.from(VALID_DATE_TYPES)
@@ -231,7 +240,8 @@ function createIntakeBatchRouter() {
       res.status(200).render('batch-review', createReviewLocals({
         batchId: saved.id,
         rows: saved.rows,
-        defaultLocation
+        defaultLocation,
+        notice: 'Review corrections saved.'
       }));
     } catch (error) {
       if (error.code === 'VALIDATION_FAILED') {
@@ -254,7 +264,7 @@ function createIntakeBatchRouter() {
   router.post('/batches/:batchId/confirm', async (req, res, next) => {
     try {
       const confirmation = await confirmIntakeBatch(Number(req.params.batchId));
-      res.status(200).json({ status: 'ok', batchId: confirmation.batchId, createdItemCount: confirmation.createdItems.length });
+      res.redirect(`/inventory?notice=confirmed&created=${confirmation.createdItems.length}`);
     } catch (error) {
       if (error.code === 'VALIDATION_FAILED') {
         res.status(400).json({ status: 'error', code: error.code, details: error.details });

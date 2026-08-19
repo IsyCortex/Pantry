@@ -2,19 +2,31 @@ const express = require('express');
 const { getActiveInventoryForDisplay, getConfirmedInventoryItem, updateConfirmedInventoryItem, markInventoryItemRemoved } = require('../services/inventory-service');
 const { VALID_LOCATIONS, VALID_UNITS, VALID_DATE_TYPES } = require('../validation/intake-batch');
 
+const NOTICE_MESSAGES = {
+  updated: 'Inventory item updated successfully.',
+  used_up: 'Item marked as used up.',
+  discarded: 'Item marked as discarded.',
+  confirmed: (created) => `Batch confirmed. ${created} item(s) added to inventory.`
+};
+
 function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay } = {}) {
   const router = express.Router();
 
-  router.get('/inventory', async (_req, res) => {
+  router.get('/inventory', async (req, res) => {
     try {
       const items = await inventoryLoader();
-      res.render('inventory', { title: 'Inventory', items, errorMessage: null });
+      const noticeKey = req.query.notice;
+      const notice = noticeKey === 'confirmed'
+        ? NOTICE_MESSAGES.confirmed(Number(req.query.created) || 0)
+        : (NOTICE_MESSAGES[noticeKey] || null);
+      res.render('inventory', { title: 'Inventory', items, errorMessage: null, notice });
     } catch (error) {
       console.error(error.stack || error);
       res.status(500).render('inventory', {
         title: 'Inventory',
         items: [],
-        errorMessage: 'Inventory could not be loaded right now.'
+        errorMessage: 'Inventory could not be loaded right now.',
+        notice: null
       });
     }
   });
@@ -38,6 +50,7 @@ function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay 
         dateType: item.date_type ?? ''
       },
       errors: [],
+      notice: null,
       locations: Array.from(VALID_LOCATIONS),
       units: Array.from(VALID_UNITS),
       dateTypes: Array.from(VALID_DATE_TYPES)
@@ -66,6 +79,7 @@ function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay 
           dateType: updated.date_type ?? ''
         },
         errors: [],
+        notice: 'Inventory item updated successfully.',
         locations: Array.from(VALID_LOCATIONS),
         units: Array.from(VALID_UNITS),
         dateTypes: Array.from(VALID_DATE_TYPES)
@@ -84,6 +98,7 @@ function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay 
             dateType: req.body.dateType
           },
           errors: error.details,
+          notice: null,
           locations: Array.from(VALID_LOCATIONS),
           units: Array.from(VALID_UNITS),
           dateTypes: Array.from(VALID_DATE_TYPES)
@@ -111,7 +126,8 @@ function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay 
       title: 'Confirm removal',
       item,
       action: 'use-up',
-      actionLabel: 'used up'
+      actionLabel: 'used up',
+      notice: null
     });
   });
 
@@ -126,14 +142,15 @@ function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay 
       title: 'Confirm removal',
       item,
       action: 'discard',
-      actionLabel: 'discarded'
+      actionLabel: 'discarded',
+      notice: null
     });
   });
 
   router.post('/inventory/:id/use-up/confirm', async (req, res) => {
     try {
       await markInventoryItemRemoved(Number(req.params.id), 'used_up');
-      res.status(200).redirect('/inventory');
+      res.redirect('/inventory?notice=used_up');
     } catch (error) {
       if (error.code === 'INVALID_STATE_TRANSITION') {
         res.status(409).send(error.message);
@@ -146,7 +163,7 @@ function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay 
   router.post('/inventory/:id/discard/confirm', async (req, res) => {
     try {
       await markInventoryItemRemoved(Number(req.params.id), 'discarded');
-      res.status(200).redirect('/inventory');
+      res.redirect('/inventory?notice=discarded');
     } catch (error) {
       if (error.code === 'INVALID_STATE_TRANSITION') {
         res.status(409).send(error.message);

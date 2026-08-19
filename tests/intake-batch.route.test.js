@@ -21,7 +21,9 @@ test('GET /batches/manual renders the manual batch editor', async () => {
     assert.match(body, /Manual intake batch/);
     assert.match(body, /Default location for newly created rows/);
     assert.match(body, /Save draft batch/);
-    assert.match(body, /Back to home/);
+    assert.match(body, /class="app-nav"/);
+    assert.match(body, /href="\/inventory"/);
+    assert.match(body, /href="\/batches\/manual"/);
     assert.match(body, /Enter advances/);
   } finally {
     server.close();
@@ -282,6 +284,125 @@ test('POST /batches/manual saves a draft batch that survives reload', async () =
     assert.equal(response.status, 200);
     assert.match(body, /value="Milk"/);
     assert.match(body, /value="2026-08-20"/);
+  } finally {
+    server.close();
+  }
+});
+test('POST /batches/manual shows success notices for draft saves and row actions', async () => {
+  await resetBatchTables();
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const params = new URLSearchParams();
+    params.set('action', 'save');
+    params.set('defaultLocation', 'fridge');
+    params.set('rows[0][name]', 'Milk');
+    params.set('rows[0][quantity]', '2');
+    params.set('rows[0][unit]', 'package');
+    params.set('rows[0][location]', 'fridge');
+    params.set('rows[0][expirationDate]', '2026-08-20');
+    params.set('rows[0][dateType]', 'best_before');
+    params.set('rows[1][name]', '');
+    params.set('rows[1][quantity]', '');
+    params.set('rows[1][unit]', '');
+    params.set('rows[1][location]', '');
+
+    const response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: params
+    });
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /Draft batch saved\./);
+    assert.match(body, /class="app-nav"/);
+    assert.match(body, /href="\/batches\/manual"/);
+
+    const addParams = new URLSearchParams();
+    addParams.set('action', 'add-row');
+    addParams.set('defaultLocation', 'pantry');
+    addParams.set('rows[0][name]', 'Milk');
+    addParams.set('rows[0][quantity]', '2');
+
+    const addResponse = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: addParams
+    });
+    const addBody = await addResponse.text();
+    assert.equal(addResponse.status, 200);
+    assert.match(addBody, /Row added\./);
+  } finally {
+    server.close();
+  }
+});
+
+test('confirming a reviewed batch adds items to inventory and returns with a notice', async () => {
+  await resetBatchTables();
+  await pool.query('TRUNCATE TABLE inventory_items RESTART IDENTITY');
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const params = new URLSearchParams();
+    params.set('action', 'save');
+    params.set('defaultLocation', 'pantry');
+    params.set('rows[0][name]', 'Milk Confirm');
+    params.set('rows[0][quantity]', '3');
+    params.set('rows[0][unit]', 'package');
+    params.set('rows[0][location]', 'fridge');
+    params.set('rows[0][expirationDate]', '2026-08-20');
+    params.set('rows[0][dateType]', 'best_before');
+
+    let response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: params
+    });
+    let body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /Draft batch saved\./);
+    const match = body.match(/name="batchId" value="(\d+)"/);
+    assert.ok(match, 'draft response should expose a batchId');
+    const batchId = match[1];
+
+    const reviewParams = new URLSearchParams();
+    reviewParams.set('action', 'review');
+    reviewParams.set('batchId', batchId);
+    reviewParams.set('defaultLocation', 'pantry');
+    reviewParams.set('rows[0][name]', 'Milk Confirm');
+    reviewParams.set('rows[0][quantity]', '3');
+    reviewParams.set('rows[0][unit]', 'package');
+    reviewParams.set('rows[0][location]', 'fridge');
+    reviewParams.set('rows[0][expirationDate]', '2026-08-20');
+    reviewParams.set('rows[0][dateType]', 'best_before');
+
+    response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: reviewParams
+    });
+    body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /Batch moved to review\./);
+    assert.match(body, /class="app-nav"/);
+    assert.match(body, /Confirm batch and add items to inventory/);
+
+    response = await fetch(`http://127.0.0.1:${port}/batches/${batchId}/confirm`, {
+      method: 'POST',
+      redirect: 'manual'
+    });
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.get('location'), `/inventory?notice=confirmed&created=1`);
+
+    response = await fetch(`http://127.0.0.1:${port}/inventory?notice=confirmed&created=1`);
+    body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /Batch confirmed\. 1 item\(s\) added to inventory\./);
+    assert.match(body, /Milk Confirm/);
   } finally {
     server.close();
   }

@@ -1,0 +1,35 @@
+<style>
+  .app-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+    align-items: center;
+    background: #2c3e50;
+    padding: 0.6rem 1rem;
+    margin: 0 0 1rem;
+  }
+  .app-nav a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .app-nav a:hover,
+  .app-nav a:focus {
+    text-decoration: underline;
+  }
+  .notice {
+    border: 1px solid #2a7a4b;
+    background: #eafff4;
+    color: #14532d;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+  }
+</style>
+<nav class="app-nav" aria-label="Global navigation">
+  <a href="/">Home</a>
+  <a href="/inventory">Inventory</a>
+  <a href="/batches/manual">Batches</a>
+</nav>
+<% if (notice) { %>
+  <section class="notice" role="status"><%= notice %></section>
+<% } %>

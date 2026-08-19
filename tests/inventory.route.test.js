@@ -1,4 +1,4 @@
-const test = require('node:test');
+    const test = require('node:test');
 const assert = require('node:assert/strict');
 const pool = require('../src/db/pool');
 const { createApp } = require('../src/app');
@@ -213,9 +213,61 @@ test('ordinary edit route does not remove or reactivate lifecycle state', async 
     });
     assert.equal(response.status, 200);
 
-    const row = await pool.query('SELECT lifecycle_status, removed_at FROM inventory_items WHERE id = 1');
+        const row = await pool.query('SELECT lifecycle_status, removed_at FROM inventory_items WHERE id = 1');
     assert.equal(row.rows[0].lifecycle_status, 'active');
     assert.equal(row.rows[0].removed_at, null);
+  } finally {
+    server.close();
+  }
+});
+
+test('POST /inventory/:id/edit shows a success notice and the global navigation', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Milk', quantity: 2, unit: 'package', location: 'fridge', expirationDate: '2026-08-20', dateType: 'best_before', lifecycleStatus: 'active' });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const params = new URLSearchParams();
+    params.set('name', 'Oat Milk');
+    params.set('quantity', '4');
+    params.set('unit', 'package');
+    params.set('location', 'pantry');
+    params.set('expirationDate', '2026-10-10');
+    params.set('dateType', 'best_before');
+
+    const response = await fetch(`http://127.0.0.1:${port}/inventory/1/edit`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: params
+    });
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /Inventory item updated successfully\./);
+    assert.match(body, /class="app-nav"/);
+    assert.match(body, /href="\/inventory"/);
+  } finally {
+    server.close();
+  }
+});
+
+test('removal confirmation redirects back to inventory with a success notice', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Milk', quantity: 2, unit: 'package', location: 'fridge', expirationDate: null, dateType: null, lifecycleStatus: 'active' });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const confirmResponse = await fetch(`http://127.0.0.1:${port}/inventory/1/use-up/confirm`, { method: 'POST', redirect: 'manual' });
+    assert.equal(confirmResponse.status, 302);
+    assert.equal(confirmResponse.headers.get('location'), '/inventory?notice=used_up');
+
+    const inventoryResponse = await fetch(`http://127.0.0.1:${port}/inventory?notice=used_up`);
+    const inventoryBody = await inventoryResponse.text();
+    assert.match(inventoryBody, /Item marked as used up\./);
+    assert.doesNotMatch(inventoryBody, /Milk/);
   } finally {
     server.close();
   }

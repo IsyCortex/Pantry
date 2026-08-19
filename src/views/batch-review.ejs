@@ -21,6 +21,7 @@
     </style>
   </head>
   <body>
+    <%- include('partials/nav', { notice }) %>
     <main>
       <h1><%= title %></h1>
       <p>Inspect the complete batch before later confirmation.</p>
@@ -124,6 +125,13 @@
         </section>
 
         <button type="submit">Save review corrections</button>
+      </form>
+
+      <hr />
+
+      <form method="post" action="/batches/<%= batchId %>/confirm">
+        <p>Once the batch is reviewed, confirm it to move accepted items into inventory.</p>
+        <button type="submit">Confirm batch and add items to inventory</button>
       </form>
     </main>
   </body>

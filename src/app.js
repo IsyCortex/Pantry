@@ -12,7 +12,7 @@ function createApp(options = {}) {
   app.use(express.urlencoded({ extended: true }));
 
   app.get('/', (_req, res) => {
-    res.render('index', { title: 'Pantry', message: 'Pantry foundation is running.' });
+    res.render('index', { title: 'Pantry', message: 'Pantry foundation is running.', notice: null });
   });
 
   app.use(healthRoutes);

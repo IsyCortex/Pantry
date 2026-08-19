@@ -6,6 +6,7 @@
     <title><%= title %></title>
   </head>
   <body>
+    <%- include('partials/nav', { notice }) %>
     <main>
       <h1><%= title %></h1>
       <p>Confirm that you want to mark <strong><%= item.name %></strong> as <%= actionLabel %>.</p>
