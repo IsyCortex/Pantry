@@ -1,21 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title><%= title %></title>
-    <style>
-      body { font-family: Arial, sans-serif; margin: 0; padding: 1rem; }
-      main { max-width: 60rem; margin: 0 auto; }
-      .inventory-list { display: grid; gap: 1rem; }
-      .inventory-item { border: 1px solid #ccc; border-radius: 0.5rem; padding: 1rem; }
-      .meta { color: #444; margin-top: 0.25rem; }
-      .empty, .error { border: 1px dashed #888; border-radius: 0.5rem; padding: 1rem; }
-      @media (min-width: 48rem) {
-        .inventory-row { display: flex; justify-content: space-between; gap: 1rem; }
-      }
-    </style>
-  </head>
+  <%- include('partials/head', { title }) %>
   <body>
     <%- include('partials/nav', { notice }) %>
     <main>

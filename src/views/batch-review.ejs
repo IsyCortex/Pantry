@@ -1,25 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title><%= title %></title>
-    <style>
-      body { font-family: Arial, sans-serif; margin: 0; padding: 1rem; }
-      main { max-width: 80rem; margin: 0 auto; }
-      .review-list { display: grid; gap: 1rem; }
-      .review-row { border: 1px solid #ccc; border-radius: 0.5rem; padding: 1rem; }
-      .warnings { color: #8a5a00; }
-      .errors { color: #a40000; }
-      .excluded { opacity: 0.65; }
-      .field-grid { display: grid; gap: 0.75rem; }
-      label { display: grid; gap: 0.25rem; font-weight: 600; }
-      input, select, button { font: inherit; padding: 0.5rem; }
-      @media (min-width: 60rem) {
-        .field-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      }
-    </style>
-  </head>
+  <%- include('partials/head', { title }) %>
   <body>
     <%- include('partials/nav', { notice }) %>
     <main>
