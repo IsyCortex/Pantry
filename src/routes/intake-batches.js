@@ -64,7 +64,7 @@ function buildReviewErrorDetails(rows) {
 function createIntakeBatchRouter() {
   const router = express.Router();
 
-  router.get('/batches/manual', async (_req, res, next) => {
+  router.get('/batches/manual', async (req, res, next) => {
     try {
       const batch = await ensureManualDraftBatch();
       const rows = batch.rows.length > 0 ? batch.rows : [createEmptyRow()];
@@ -74,7 +74,7 @@ function createIntakeBatchRouter() {
         rows,
         defaultLocation: '',
         errors: [],
-        notice: null,
+        notice: req.query.notice === 'saved' ? 'Draft batch saved.' : null,
         locations: Array.from(VALID_LOCATIONS),
         units: Array.from(VALID_UNITS),
         dateTypes: Array.from(VALID_DATE_TYPES)
@@ -178,17 +178,9 @@ function createIntakeBatchRouter() {
         rows
       });
 
-      res.status(200).render('manual-batch', {
-        title: 'Manual intake batch',
-        batchId: batch.id,
-        rows: batch.rows.length > 0 ? batch.rows : [createEmptyRow(defaultLocation)],
-        defaultLocation,
-        errors: [],
-        notice: 'Draft batch saved.',
-        locations: Array.from(VALID_LOCATIONS),
-        units: Array.from(VALID_UNITS),
-        dateTypes: Array.from(VALID_DATE_TYPES)
-      });
+      // Ground rule 3: after saving a batch, forward to the page/report that
+      // shows the batch (the manual batch page), with a confirmation.
+      res.redirect('/batches/manual?notice=saved');
     } catch (error) {
       if (error.code === 'VALIDATION_FAILED') {
         res.status(400).render('manual-batch', {
@@ -220,7 +212,8 @@ function createIntakeBatchRouter() {
       res.status(200).render('batch-review', createReviewLocals({
         batchId: batch.id,
         rows: batch.rows,
-        defaultLocation: ''
+        defaultLocation: '',
+        notice: req.query.notice === 'corrections_saved' ? 'Review corrections saved.' : null
       }));
     } catch (error) {
       next(error);
@@ -237,12 +230,9 @@ function createIntakeBatchRouter() {
         rows
       });
 
-      res.status(200).render('batch-review', createReviewLocals({
-        batchId: saved.id,
-        rows: saved.rows,
-        defaultLocation,
-        notice: 'Review corrections saved.'
-      }));
+      // Ground rule 3: after saving review corrections, forward to the batch
+      // report (the review page) with a confirmation.
+      res.redirect(`/batches/${saved.id}/review?notice=corrections_saved`);
     } catch (error) {
       if (error.code === 'VALIDATION_FAILED') {
         res.status(400).render('batch-review', {

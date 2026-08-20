@@ -67,23 +67,9 @@ function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay 
         expirationDate: req.body.expirationDate === '' ? null : req.body.expirationDate,
         dateType: req.body.dateType === '' ? null : req.body.dateType
       });
-      res.status(200).render('inventory-edit', {
-        title: 'Edit inventory item',
-        item: {
-          id: updated.id,
-          name: updated.name,
-          quantity: updated.quantity ?? '',
-          unit: updated.unit ?? '',
-          location: updated.location,
-          expirationDate: updated.expiration_date ?? '',
-          dateType: updated.date_type ?? ''
-        },
-        errors: [],
-        notice: 'Inventory item updated successfully.',
-        locations: Array.from(VALID_LOCATIONS),
-        units: Array.from(VALID_UNITS),
-        dateTypes: Array.from(VALID_DATE_TYPES)
-      });
+      // Ground rule 3: after saving an inventory item, forward to the
+      // inventory report showing the saved item (with confirmation).
+      res.redirect('/inventory?notice=updated');
     } catch (error) {
       if (error.code === 'VALIDATION_FAILED') {
         res.status(400).render('inventory-edit', {

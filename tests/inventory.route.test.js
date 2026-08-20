@@ -240,11 +240,18 @@ test('POST /inventory/:id/edit shows a success notice and the global navigation'
     const response = await fetch(`http://127.0.0.1:${port}/inventory/1/edit`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: params
+      body: params,
+      redirect: 'manual'
     });
-    const body = await response.text();
-    assert.equal(response.status, 200);
+    // Ground rule 3: saving an inventory item forwards to the inventory report.
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.get('location'), '/inventory?notice=updated');
+
+    const inventoryResponse = await fetch(`http://127.0.0.1:${port}/inventory?notice=updated`);
+    const body = await inventoryResponse.text();
+    assert.equal(inventoryResponse.status, 200);
     assert.match(body, /Inventory item updated successfully\./);
+    assert.match(body, /Oat Milk/);
     assert.match(body, /class="app-nav"/);
     assert.match(body, /href="\/inventory"/);
   } finally {

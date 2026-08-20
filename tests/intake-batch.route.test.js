@@ -309,13 +309,19 @@ test('POST /batches/manual shows success notices for draft saves and row actions
     params.set('rows[1][unit]', '');
     params.set('rows[1][location]', '');
 
+    // Ground rule 3: saving a batch forwards to the batch page/report.
     const response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: params
+      body: params,
+      redirect: 'manual'
     });
-    const body = await response.text();
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.get('location'), '/batches/manual?notice=saved');
+
+    const draftPage = await fetch(`http://127.0.0.1:${port}/batches/manual?notice=saved`);
+    const body = await draftPage.text();
+    assert.equal(draftPage.status, 200);
     assert.match(body, /Draft batch saved\./);
     assert.match(body, /class="app-nav"/);
     assert.match(body, /href="\/batches\/manual"/);
@@ -360,13 +366,16 @@ test('confirming a reviewed batch adds items to inventory and returns with a not
     let response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: params
+      body: params,
+      redirect: 'manual'
     });
-    let body = await response.text();
-    assert.equal(response.status, 200);
-    assert.match(body, /Draft batch saved\./);
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.get('location'), '/batches/manual?notice=saved');
+
+    // Follow the forward to the batch page and pick up the draft batch id.
+    let body = await (await fetch(`http://127.0.0.1:${port}/batches/manual`)).text();
     const match = body.match(/name="batchId" value="(\d+)"/);
-    assert.ok(match, 'draft response should expose a batchId');
+    assert.ok(match, 'draft page should expose a batchId');
     const batchId = match[1];
 
     const reviewParams = new URLSearchParams();
