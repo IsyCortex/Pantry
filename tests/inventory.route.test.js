@@ -279,3 +279,31 @@ test('removal confirmation redirects back to inventory with a success notice', a
     server.close();
   }
 });
+
+test('inventory overview exposes client-side sort controls and sortable item fields', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Pears', quantity: 3, unit: 'piece', location: 'pantry', expirationDate: '2026-08-30', dateType: 'best_before', lifecycleStatus: 'active' });
+  await insertInventoryItem({ name: 'Apples', quantity: 5, unit: 'piece', location: 'fridge', expirationDate: '2026-08-25', dateType: 'best_before', lifecycleStatus: 'active' });
+  await insertInventoryItem({ name: 'Flour', quantity: 1, unit: 'kg', location: 'pantry', expirationDate: null, dateType: null, lifecycleStatus: 'active' });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/inventory`);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    // Sort controls (client-only; no query params involved).
+    assert.match(body, /data-sort="date"/);
+    assert.match(body, /data-sort="location"/);
+    assert.match(body, /inventory-sort\.js/);
+    // Per-item sortable fields.
+    assert.match(body, /data-date="2026-08-25"/);
+    assert.match(body, /data-date="2026-08-30"/);
+    assert.match(body, /data-date=""/);
+    assert.match(body, /data-location="fridge"/);
+    assert.match(body, /data-location="pantry"/);
+  } finally {
+    server.close();
+  }
+});
