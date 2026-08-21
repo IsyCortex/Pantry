@@ -67,9 +67,12 @@ test('shows useful empty-state orientation', async () => {
     const response = await fetch(`http://127.0.0.1:${port}/inventory`);
     const body = await response.text();
     assert.equal(response.status, 200);
-    assert.match(body, /No food has been added yet/);
+        assert.match(body, /No food has been added yet/);
     assert.match(body, /Confirmed batches populate the inventory/);
     assert.match(body, /Manual intake is the next step/);
+    assert.match(body, /href="\/batches\/manual"/);
+    assert.match(body, /class="primary-btn"/);
+    assert.match(body, /Add item to inventory/);
   } finally {
     server.close();
   }
@@ -298,11 +301,14 @@ test('inventory overview exposes client-side sort controls and sortable item fie
     assert.match(body, /data-sort="location"/);
     assert.match(body, /inventory-sort\.js/);
     // Per-item sortable fields.
-    assert.match(body, /data-date="2026-08-25"/);
+        assert.match(body, /data-date="2026-08-25"/);
     assert.match(body, /data-date="2026-08-30"/);
     assert.match(body, /data-date=""/);
     assert.match(body, /data-location="fridge"/);
     assert.match(body, /data-location="pantry"/);
+    // Primary add-item call-to-action is surfaced on the overview.
+    assert.match(body, /href="\/batches\/manual"/);
+    assert.match(body, /class="primary-btn"/);
   } finally {
     server.close();
   }

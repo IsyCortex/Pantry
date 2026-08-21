@@ -6,6 +6,10 @@
     <main>
       <h1><%= title %></h1>
 
+      <section class="view-actions">
+        <a href="/batches/manual" class="primary-btn" aria-label="Add item to inventory">+ Add item</a>
+      </section>
+
       <% if (errorMessage) { %>
         <section class="error">
           <p><%= errorMessage %></p>
