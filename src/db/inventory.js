@@ -23,7 +23,7 @@ async function createInventoryItem(item, client = pool) {
 
 async function getInventoryItemById(id) {
   const result = await pool.query(
-    `SELECT id, name, quantity, unit, location, expiration_date, date_type, lifecycle_status, source_batch_id, created_at, updated_at, removed_at
+    `SELECT id, name, quantity, unit, location, expiration_date::text AS expiration_date, date_type, lifecycle_status, source_batch_id, created_at, updated_at, removed_at
      FROM inventory_items
      WHERE id = $1`,
     [id]

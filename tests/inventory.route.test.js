@@ -118,6 +118,8 @@ test('GET /inventory/:id/edit renders the edit interface for a confirmed item', 
     assert.match(body, /Edit inventory item/);
     assert.match(body, /Mark used up/);
     assert.match(body, /Mark discarded/);
+    assert.match(body, /value="2026-08-20"/);
+    assert.match(body, /value="best_before" selected>/);
   } finally {
     server.close();
   }
