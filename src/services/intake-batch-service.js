@@ -11,6 +11,16 @@ const {
 const { normalizeDraftRows, hasValue } = require('../validation/intake-batch');
 const { createConfirmedInventoryItem } = require('./inventory-service');
 
+// Manual batches stay editable until they are confirmed. Once confirmed they
+// are immutable history; later corrections happen on inventory items (1.6).
+const EDITABLE_BATCH_STATES = new Set(['draft', 'pending_review']);
+
+function assertOpenManualBatch(batch, message) {
+  if (!batch || batch.source_type !== 'manual' || !EDITABLE_BATCH_STATES.has(batch.state)) {
+    throw createInvalidStateError(message);
+  }
+}
+
 function createValidationError(details) {
   const error = new Error('VALIDATION_FAILED');
   error.code = 'VALIDATION_FAILED';
@@ -148,6 +158,9 @@ async function saveManualDraftBatch({ batchId, rows }) {
     if (!targetBatchId) {
       const created = await createManualIntakeBatch(client);
       targetBatchId = created.id;
+    } else {
+      const existing = await getDraftBatchById(targetBatchId, client);
+      assertOpenManualBatch(existing, 'Only open manual batches can be edited.');
     }
 
     await replaceDraftBatchItems(targetBatchId, validation.value, client);
@@ -182,80 +195,143 @@ function createInvalidStateError(message) {
   return error;
 }
 
+async function confirmIntakeBatchOnClient(batchId, client, options = {}) {
+  const batch = await getBatchForConfirmation(batchId, client);
+  if (!batch) {
+    const error = new Error('NOT_FOUND');
+    error.code = 'NOT_FOUND';
+    throw error;
+  }
+
+  if (batch.state !== 'pending_review') {
+    throw createInvalidStateError('Batch is not ready for confirmation');
+  }
+
+  const hydratedBatch = {
+    id: Number(batch.id),
+    state: batch.state,
+    sourceType: batch.source_type,
+    rows: buildReviewRows(batch.rows.map((row) => ({
+      id: Number(row.id),
+      position: row.position,
+      name: row.name ?? '',
+      quantity: row.quantity ?? '',
+      unit: row.unit ?? '',
+      location: row.location ?? '',
+      expirationDate: row.expiration_date ?? '',
+      dateType: row.date_type ?? '',
+      accepted: row.accepted !== false
+    })))
+  };
+
+  const acceptedRows = hydratedBatch.rows.filter((row) => row.accepted !== false);
+
+  if (acceptedRows.length === 0) {
+    const error = new Error('VALIDATION_FAILED');
+    error.code = 'VALIDATION_FAILED';
+    error.details = ['The batch contains no included rows to add to inventory.'];
+    throw error;
+  }
+
+  const invalidAcceptedRows = acceptedRows.filter((row) => {
+    const missingRequired = !hasValue(row.name) || !hasValue(row.location);
+    const fieldErrors = createFieldErrors(row);
+    return missingRequired || Object.keys(fieldErrors).length > 0;
+  });
+
+  if (invalidAcceptedRows.length > 0) {
+    const error = new Error('VALIDATION_FAILED');
+    error.code = 'VALIDATION_FAILED';
+    error.details = invalidAcceptedRows.map((row) => `Accepted row ${row.position + 1} is invalid for confirmation`);
+    throw error;
+  }
+
+  const createdItems = [];
+  const inventoryWriter = options.inventoryWriter || createConfirmedInventoryItem;
+  for (const row of acceptedRows) {
+    const quantity = row.quantity === '' || row.quantity == null ? null : Number(row.quantity);
+    const created = await inventoryWriter({
+      name: row.name,
+      quantity,
+      unit: row.unit === '' ? null : row.unit,
+      location: row.location,
+      expirationDate: row.expirationDate === '' ? null : row.expirationDate,
+      dateType: row.dateType === '' ? null : row.dateType,
+      sourceBatchId: hydratedBatch.id
+    }, client);
+    createdItems.push(created);
+  }
+
+  const confirmed = await setBatchConfirmed(hydratedBatch.id, client);
+  if (!confirmed) {
+    throw createInvalidStateError('Batch confirmation could not be applied');
+  }
+
+  return {
+    batchId: hydratedBatch.id,
+    state: confirmed.state,
+    createdItems
+  };
+}
+
 async function confirmIntakeBatch(batchId, options = {}) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const confirmation = await confirmIntakeBatchOnClient(batchId, client, options);
+    await client.query('COMMIT');
+    return confirmation;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 
-    const batch = await getBatchForConfirmation(batchId, client);
-    if (!batch) {
-      const error = new Error('NOT_FOUND');
-      error.code = 'NOT_FOUND';
-      throw error;
+// Saves manually entered rows and confirms them in one transaction, bypassing
+// the review step. Human review is mandatory only for AI-proposed input
+// (ADR-0002); hand-typed batches go straight to the active inventory.
+async function confirmManualBatchFromInput({ batchId, rows }, options = {}) {
+  const validation = normalizeDraftRows(rows);
+  if (!validation.valid) {
+    throw createValidationError(validation.errors);
+  }
+
+  const acceptedInputRows = validation.value.filter((row) => row.accepted !== false);
+  if (acceptedInputRows.length === 0) {
+    throw createValidationError(['At least one included row is required to add items to the inventory.']);
+  }
+
+  // Completely empty rows carry no meaning for a direct save: drop them before
+  // persisting, so the batch only contains rows that describe an item.
+  const hasContent = (row) => [row.name, row.quantity, row.unit, row.location, row.expirationDate, row.dateType]
+    .some((value) => hasValue(value));
+  const persistedRows = validation.value.filter((row) => row.accepted === false || hasContent(row));
+  if (persistedRows.filter((row) => row.accepted !== false).length === 0) {
+    throw createValidationError(['At least one included row is required to add items to the inventory.']);
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    let targetBatchId = batchId;
+    if (targetBatchId == null) {
+      const existing = await findLatestOpenManualBatch(client);
+      targetBatchId = existing ? existing.id : (await createManualIntakeBatch(client)).id;
+    } else {
+      const existing = await getDraftBatchById(targetBatchId, client);
+      assertOpenManualBatch(existing, 'Only open manual batches can be saved to the inventory.');
     }
 
-    if (batch.state !== 'pending_review') {
-      throw createInvalidStateError('Batch is not ready for confirmation');
-    }
+    await replaceDraftBatchItems(targetBatchId, persistedRows, client);
+    await updateBatchState(targetBatchId, 'pending_review', client);
 
-    const hydratedBatch = {
-      id: Number(batch.id),
-      state: batch.state,
-      sourceType: batch.source_type,
-      rows: buildReviewRows(batch.rows.map((row) => ({
-        id: Number(row.id),
-        position: row.position,
-        name: row.name ?? '',
-        quantity: row.quantity ?? '',
-        unit: row.unit ?? '',
-        location: row.location ?? '',
-        expirationDate: row.expiration_date ?? '',
-        dateType: row.date_type ?? '',
-        accepted: row.accepted !== false
-      })))
-    };
-
-    const acceptedRows = hydratedBatch.rows.filter((row) => row.accepted !== false);
-    const invalidAcceptedRows = acceptedRows.filter((row) => {
-      const missingRequired = !hasValue(row.name) || !hasValue(row.location);
-      const fieldErrors = createFieldErrors(row);
-      return missingRequired || Object.keys(fieldErrors).length > 0;
-    });
-
-    if (invalidAcceptedRows.length > 0) {
-      const error = new Error('VALIDATION_FAILED');
-      error.code = 'VALIDATION_FAILED';
-      error.details = invalidAcceptedRows.map((row) => `Accepted row ${row.position + 1} is invalid for confirmation`);
-      throw error;
-    }
-
-    const createdItems = [];
-    const inventoryWriter = options.inventoryWriter || createConfirmedInventoryItem;
-    for (const row of acceptedRows) {
-      const quantity = row.quantity === '' || row.quantity == null ? null : Number(row.quantity);
-      const created = await inventoryWriter({
-        name: row.name,
-        quantity,
-        unit: row.unit === '' ? null : row.unit,
-        location: row.location,
-        expirationDate: row.expirationDate === '' ? null : row.expirationDate,
-        dateType: row.dateType === '' ? null : row.dateType,
-        sourceBatchId: hydratedBatch.id
-      }, client);
-      createdItems.push(created);
-    }
-
-    const confirmed = await setBatchConfirmed(hydratedBatch.id, client);
-    if (!confirmed) {
-      throw createInvalidStateError('Batch confirmation could not be applied');
-    }
+    const confirmation = await confirmIntakeBatchOnClient(targetBatchId, client, options);
 
     await client.query('COMMIT');
-    return {
-      batchId: hydratedBatch.id,
-      state: confirmed.state,
-      createdItems
-    };
+    return confirmation;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -267,6 +343,7 @@ async function confirmIntakeBatch(batchId, options = {}) {
 module.exports = {
   buildReviewRows,
   confirmIntakeBatch,
+  confirmManualBatchFromInput,
   ensureManualDraftBatch,
   getManualDraftBatch,
   saveManualDraftBatch,

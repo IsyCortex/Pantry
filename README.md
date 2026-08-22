@@ -7,8 +7,8 @@ The MVP deliberately concentrates on inventory visibility and expiration awarene
 ## Primary workflow
 
 1. Enter groceries manually or describe a batch in natural language.
-2. Inspect and correct the resulting draft batch.
-3. Confirm the batch into the active inventory.
+2. Manually entered batches are saved straight to the active inventory in one step.
+3. AI-proposed batches are inspected and corrected through a human review step before confirmation.
 4. Review inventory by location and expiration status.
 5. Mark items as used up or discarded when they leave the inventory.
 

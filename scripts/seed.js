@@ -9,7 +9,7 @@ const { createConfirmedInventoryItem } = require('../src/services/inventory-serv
 // Seeded dataset:
 //  - 4 individual inventory items (no source batch)
 //  - 1 confirmed batch: 3 accepted items confirmed through the real workflow
-//  - 1 open draft batch: 4 items still awaiting review/confirmation
+//  - 1 pending_review batch: 4 items awaiting human confirmation
 //
 // The seed truncates the M1 tables first so it is deterministic and safe to
 // re-run (ids restart at 1 each time).
@@ -64,7 +64,8 @@ async function main() {
   const confirmed = await confirmIntakeBatch(confirmedDraft.id);
   report.push(`Confirmed batch ${confirmed.batchId}: ${confirmed.createdItems.length} item(s) added to inventory.`);
 
-  // 3) Open batch: a draft awaiting review/confirmation, 4 items.
+  // 3) Pending-review batch: mirrors an AI-proposed batch awaiting human
+  // confirmation, 4 items. Exercise it through /batches/<id>/review.
   const openRows = [
     draftRow({ name: 'Milk', quantity: '2', unit: 'package', location: 'fridge', expirationDate: '2026-08-27', dateType: 'best_before' }),
     draftRow({ name: 'Carrots', quantity: '10', unit: 'piece', location: 'fridge', expirationDate: '', dateType: '' }),
@@ -73,7 +74,8 @@ async function main() {
   ];
 
   const openBatch = await saveManualDraftBatch({ batchId: null, rows: openRows });
-  report.push(`Open draft batch ${openBatch.id}: ${openBatch.rows.length} item(s) awaiting review.`);
+  await markBatchPendingReview(openBatch.id);
+  report.push(`Pending-review batch ${openBatch.id}: ${openBatch.rows.length} item(s) awaiting confirmation.`);
 
   console.log(report.join('\n'));
   await pool.end();

@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { pool, resetAllTables } = require('./helpers/test-db');
 const { createApp } = require('../src/app');
-const { saveManualDraftBatch } = require('../src/services/intake-batch-service');
+const { saveManualDraftBatch, markBatchPendingReview } = require('../src/services/intake-batch-service');
 
 async function resetBatchTables() {
   await resetAllTables();
@@ -116,7 +116,7 @@ test('excluded rows do not show blocking missing-name or missing-location errors
   }
 });
 
-test('review action transitions a valid persisted draft batch into pending_review', async () => {
+test('review page renders a batch moved to pending review via the service', async () => {
   await resetBatchTables();
 
   const saved = await saveManualDraftBatch({
@@ -125,35 +125,18 @@ test('review action transitions a valid persisted draft batch into pending_revie
       { name: 'Milk', quantity: '2', unit: 'package', location: 'fridge', expirationDate: '2026-08-20', dateType: 'best_before' }
     ]
   });
+  await markBatchPendingReview(saved.id);
 
   const app = createApp();
   const server = app.listen(0);
   const { port } = server.address();
 
   try {
-    const manualReviewParams = new URLSearchParams();
-    manualReviewParams.set('batchId', String(saved.id));
-    manualReviewParams.set('action', 'review');
-    manualReviewParams.set('rows[0][name]', 'Milk');
-    manualReviewParams.set('rows[0][quantity]', '');
-    manualReviewParams.set('rows[0][unit]', 'package');
-    manualReviewParams.set('rows[0][location]', 'fridge');
-    manualReviewParams.set('rows[0][expirationDate]', '2026-02-30');
-    manualReviewParams.set('rows[0][dateType]', 'best_before');
-
-    const manualReviewResponse = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: manualReviewParams
-    });
-    const manualReviewBody = await manualReviewResponse.text();
-    assert.equal(manualReviewResponse.status, 200);
-    assert.match(manualReviewBody, /Review intake batch/);
-
-    const reloaded = await fetch(`http://127.0.0.1:${port}/batches/${saved.id}/review`);
-    const reloadedBody = await reloaded.text();
-    assert.equal(reloaded.status, 200);
-    assert.match(reloadedBody, /Review intake batch/);
+    const review = await fetch(`http://127.0.0.1:${port}/batches/${saved.id}/review`);
+    const reviewBody = await review.text();
+    assert.equal(review.status, 200);
+    assert.match(reviewBody, /Review intake batch/);
+    assert.match(reviewBody, /Confirm batch and add items to inventory/);
   } finally {
     server.close();
   }

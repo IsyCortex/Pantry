@@ -5,7 +5,7 @@
     <%- include('partials/nav', { notice }) %>
     <main>
       <h1><%= title %></h1>
-      <p class="subtle">Create and revise draft rows before later review and confirmation.</p>
+      <p class="subtle">Enter your items and save the batch straight to the active inventory.</p>
 
       <% if (errors.length > 0) { %>
         <section class="errors">
@@ -33,7 +33,7 @@
           </label>
           <button type="submit" name="action" value="add-row">Add row</button>
           <button type="submit" name="action" value="save">Save draft batch</button>
-          <button type="submit" name="action" value="review">Review batch</button>
+          <button type="submit" name="action" value="save-to-inventory" class="primary-btn">Save to inventory</button>
         </div>
 
         <section class="batch-grid">

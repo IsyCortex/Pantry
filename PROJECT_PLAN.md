@@ -255,6 +255,8 @@
 - [ ] Draft work survives validation errors.
 - [ ] An unconfirmed draft batch can be resumed after a page reload without recreating its rows.
 - [ ] At least 20 items can be entered without navigating away.
+- [ ] Manually entered batches can be saved directly to the active inventory in one step.
+- [ ] The manual editor never offers a review action that cannot be performed (controls for unavailable actions are not rendered).
 
 ### Technical plan and progress
 
@@ -266,6 +268,7 @@
 - [ ] Implement default-location behavior
 - [ ] Add draft persistence tests
 - [ ] Add interface tests
+- [ ] Add direct-save service and route action
 
 ## Ticket 1.4 — Review and validate an intake batch
 
@@ -279,6 +282,7 @@
 - [ ] Users can exclude individual rows.
 - [ ] Corrections do not require recreating the batch.
 - [ ] Draft rows never appear in active inventory.
+- [ ] The review workflow applies to AI-proposed (provider) input only; manually entered batches are saved directly without a review detour (ADR-0002).
 
 ### Technical plan and progress
 
@@ -297,6 +301,7 @@
 - [ ] The operation uses one database transaction.
 - [ ] Failure creates no partial inventory.
 - [ ] A confirmed batch cannot be confirmed again.
+- [ ] Confirming a batch without any included rows is rejected with no side effects.
 - [ ] Draft-only and provider metadata do not leak into inventory fields.
 - [ ] Created items retain their source-batch relationship.
 - [ ] Confirmed items immediately appear in active inventory.
@@ -310,6 +315,7 @@
 - [ ] Record source-batch relationships
 - [ ] Add rollback tests
 - [ ] Add repeat-confirmation tests
+- [ ] Add empty-batch rejection tests
 
 ## Ticket 1.6 — Edit and remove inventory items
 

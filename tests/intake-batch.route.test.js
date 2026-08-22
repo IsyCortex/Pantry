@@ -345,7 +345,7 @@ test('POST /batches/manual shows success notices for draft saves and row actions
   }
 });
 
-test('confirming a reviewed batch adds items to inventory and returns with a notice', async () => {
+test('saving a manual batch directly adds items to inventory and returns with a notice', async () => {
   await resetBatchTables();
 
   const app = createApp();
@@ -353,7 +353,7 @@ test('confirming a reviewed batch adds items to inventory and returns with a not
   const { port } = server.address();
   try {
     const params = new URLSearchParams();
-    params.set('action', 'save');
+    params.set('action', 'save-to-inventory');
     params.set('defaultLocation', 'pantry');
     params.set('rows[0][name]', 'Milk Confirm');
     params.set('rows[0][quantity]', '3');
@@ -362,55 +362,72 @@ test('confirming a reviewed batch adds items to inventory and returns with a not
     params.set('rows[0][expirationDate]', '2026-08-20');
     params.set('rows[0][dateType]', 'best_before');
 
-    let response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
+    const response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: params,
       redirect: 'manual'
     });
     assert.equal(response.status, 302);
-    assert.equal(response.headers.get('location'), '/batches/manual?notice=saved');
+    assert.equal(response.headers.get('location'), '/inventory?notice=confirmed&created=1');
 
-    // Follow the forward to the batch page and pick up the draft batch id.
-    let body = await (await fetch(`http://127.0.0.1:${port}/batches/manual`)).text();
-    const match = body.match(/name="batchId" value="(\d+)"/);
-    assert.ok(match, 'draft page should expose a batchId');
-    const batchId = match[1];
-
-    const reviewParams = new URLSearchParams();
-    reviewParams.set('action', 'review');
-    reviewParams.set('batchId', batchId);
-    reviewParams.set('defaultLocation', 'pantry');
-    reviewParams.set('rows[0][name]', 'Milk Confirm');
-    reviewParams.set('rows[0][quantity]', '3');
-    reviewParams.set('rows[0][unit]', 'package');
-    reviewParams.set('rows[0][location]', 'fridge');
-    reviewParams.set('rows[0][expirationDate]', '2026-08-20');
-    reviewParams.set('rows[0][dateType]', 'best_before');
-
-    response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: reviewParams
-    });
-    body = await response.text();
-    assert.equal(response.status, 200);
-    assert.match(body, /Batch moved to review\./);
-    assert.match(body, /class="app-nav"/);
-    assert.match(body, /Confirm batch and add items to inventory/);
-
-    response = await fetch(`http://127.0.0.1:${port}/batches/${batchId}/confirm`, {
-      method: 'POST',
-      redirect: 'manual'
-    });
-    assert.equal(response.status, 302);
-    assert.equal(response.headers.get('location'), `/inventory?notice=confirmed&created=1`);
-
-    response = await fetch(`http://127.0.0.1:${port}/inventory?notice=confirmed&created=1`);
-    body = await response.text();
-    assert.equal(response.status, 200);
+    const inventoryResponse = await fetch(`http://127.0.0.1:${port}/inventory?notice=confirmed&created=1`);
+    const body = await inventoryResponse.text();
+    assert.equal(inventoryResponse.status, 200);
     assert.match(body, /Batch confirmed\. 1 item\(s\) added to inventory\./);
     assert.match(body, /Milk Confirm/);
+  } finally {
+    server.close();
+  }
+});
+
+test('manual batch editor offers direct save to inventory and no review detour', async () => {
+  await resetBatchTables();
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/batches/manual`);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /Save to inventory/);
+    assert.doesNotMatch(body, /Review batch/);
+  } finally {
+    server.close();
+  }
+});
+
+test('direct save re-renders the editor with validation errors and preserved values', async () => {
+  await resetBatchTables();
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const params = new URLSearchParams();
+    params.set('action', 'save-to-inventory');
+    params.set('defaultLocation', 'pantry');
+    params.set('rows[0][name]', 'Milk');
+    params.set('rows[0][quantity]', '-1');
+    params.set('rows[0][unit]', 'package');
+    params.set('rows[0][location]', 'fridge');
+    params.set('rows[0][expirationDate]', '');
+    params.set('rows[0][dateType]', '');
+
+    const response = await fetch(`http://127.0.0.1:${port}/batches/manual`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: params
+    });
+    const body = await response.text();
+    assert.equal(response.status, 400);
+    assert.match(body, /Validation errors/);
+    assert.match(body, /quantity must be a positive number/);
+    assert.match(body, /value="-1"/);
+
+    const inventoryCount = await pool.query('SELECT COUNT(*)::int AS count FROM inventory_items');
+    assert.equal(inventoryCount.rows[0].count, 0);
   } finally {
     server.close();
   }

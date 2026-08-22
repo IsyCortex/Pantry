@@ -37,7 +37,7 @@ Seeded dataset (Path B expectations):
 | 6 | Frozen Peas | freezer | 5 package | 2027-02-01, best_before (batch 1) |
 | 7 | Bread | pantry | 2 piece | 2026-08-24, best_before (batch 1) |
 
-Plus one open draft batch (id 2): Milk, Carrots (no date), Chicken, Bananas — still awaiting review.
+Plus one pending-review batch (id 2): Milk, Carrots (no date), Chicken, Bananas — awaiting human confirmation; open it at `/batches/2/review` for the S5/S6 checks.
 
 ## 4. Field value cheat sheet (what validation accepts)
 
@@ -71,35 +71,40 @@ Precondition: seeded data or items confirmed in S6.
 4. Sort toolbar: "Expiration date" orders chronologically with undated items last; "Location" orders alphabetically; the active sort is visually indicated.
 5. Repeat at narrow mobile width (see S9).
 
-### S3 — Manual batch entry (Ticket 1.3)
+### S3 — Manual batch entry and direct save (Ticket 1.3)
 
 1. From `/inventory` click "+ Add item" (or nav → Batches). The manual batch editor opens with one empty row.
-2. Fill a row completely: name, quantity, unit, location, expiration date, date type.
-3. Row actions: **Add row** appends an empty row; **Duplicate** copies the current row below itself; **Remove** deletes it (removing the last remaining row leaves one fresh empty row); **Move up / Move down** reorder rows.
-4. Enter key: advances field to field within a row, then to the next row's name field; pressing Enter on the last row creates a new row. At least 20 rows can be created and filled without navigating away.
-5. Default location: set "Default location for newly created rows" to `freezer`, then click **Add row** — the new row is prefilled with `freezer`, while previously entered rows keep their own locations.
-6. Draft survives validation errors: enter quantity `0` (or pick a unit without a quantity) and click **Save draft batch** — validation errors are listed and every entered value is still present. Correct the value and save again.
+2. The editor shows **Save draft batch** and **Save to inventory** as its two saving actions. It does **not** offer a "Review batch" action — manual input never passes through the review workflow (ADR-0002); an action that cannot be performed is not offered.
+3. Fill a row completely: name, quantity, unit, location, expiration date, date type.
+4. Row actions: **Add row** appends an empty row; **Duplicate** copies the current row below itself; **Remove** deletes it (removing the last remaining row leaves one fresh empty row); **Move up / Move down** reorder rows.
+5. Enter key: advances field to field within a row, then to the next row's name field; pressing Enter on the last field of the last row adds a row. At least 20 rows can be created and filled without navigating away.
+6. Default location: set "Default location for newly created rows" to `freezer`, then click **Add row** — the new row is prefilled with `freezer`, while previously entered rows keep their own locations.
+7. Draft survives validation errors: enter quantity `0` and click **Save draft batch** — validation errors are listed and every entered value is still present. Correct the value and save again.
+8. **Save to inventory**: fill one valid row and click **Save to inventory** — redirect to `/inventory?notice=confirmed...` with notice "Batch confirmed. N item(s) added to inventory." and the item appears in the active list.
+9. Invalid input on **Save to inventory**: submit a row with quantity `0` — the editor re-renders with the validation error, the entered values are preserved, and nothing is added to `/inventory`.
 
-### S4 — Draft persistence and resume (Ticket 1.3)
+### S4 — Draft persistence, resume, and isolation (Ticket 1.3)
 
 1. With several rows entered, click **Save draft batch** — redirect back to `/batches/manual` with notice "Draft batch saved."
 2. Navigate away (for example to `/`), then reopen `/batches/manual` — the same rows are restored because the app resumes the latest open draft batch.
 3. Reload the page (F5) — rows are still there; nothing had to be recreated.
 4. Throughout, none of the draft rows may appear in `/inventory`.
 
-### S5 — Review and validate an intake batch (Ticket 1.4)
+### S5 — Review of AI-proposed batches (Ticket 1.4)
 
-1. Click **Review batch** on the manual batch page — the review page lists the complete batch.
-2. Leave one accepted row without a name and another without a location — each row shows its specific blocking message: "Name is required before confirmation." / "Storage location is required before confirmation."
+Manual entry bypasses review; the review step belongs to provider (AI) input and will be exercised by M2. In the meantime the review interface can be regression-checked on a `pending_review` batch via its URL (Path B seeded draft / routes that placed a batch into `pending_review`):
+
+1. Open `/batches/<id>/review` for a pending_review batch — the review page lists the complete batch with "Inspect the complete batch before later confirmation."
+2. A row without a name shows the blocking message "Name is required before confirmation."; a row without a location shows "Storage location is required before confirmation."; each rejected field is identified per row.
 3. A row without an expiration date shows an attention reason (warning) but does not block.
-4. Enter two rows with the same name — the within-batch duplicate is flagged as an attention reason; rows are not merged or altered.
+4. Two rows with the same name are flagged as a within-batch duplicate; rows are not merged or altered.
 5. Invalid optional values (for example quantity `0`) are identified per row with a specific message.
-6. Set one row to "Excluded" via "Include row on confirmation", click **Save review corrections** — redirect back with notice "Review corrections saved."; corrections persist without recreating the batch.
-7. While the batch remains unconfirmed, `/inventory` must not contain any of its rows.
+6. Set one row to "Excluded", click **Save review corrections** — redirect back with notice "Review corrections saved."; corrections persist without recreating the batch.
+7. While the batch remains pending, `/inventory` must not contain any of its rows.
 
 ### S6 — Confirm a batch transactionally (Ticket 1.5)
 
-1. Fix all blocking issues; keep at least one excluded row and one undated row, then click **Confirm batch and add items to inventory**.
+1. Fix all blocking issues on a pending_review batch; keep at least one excluded row and one undated row, then click **Confirm batch and add items to inventory**.
 2. Expected redirect to `/inventory?notice=confirmed...` with notice "Batch confirmed. N item(s) added to inventory." — N counts only accepted valid rows; the excluded row is absent; the undated accepted row is present with "No expiration date".
 3. Repeat-confirmation protection: navigate back and resubmit the confirm form (re-POST `/batches/<id>/confirm`) — the request is rejected (HTTP 409) and no duplicates appear in `/inventory`.
 4. Optional database spot-check: `docker exec -it pantry-postgres psql -U pantry -d pantry -c "SELECT id, name, source_batch_id FROM inventory_items ORDER BY id;"` — confirmed items carry their source-batch id; draft-only fields (position, accepted) have no counterpart columns in `inventory_items`.
@@ -137,7 +142,7 @@ Precondition: seeded data or items confirmed in S6.
 
 ## 7. Observations worth recording during the test
 
-- Confirming a batch whose accepted rows still fail validation returns a raw JSON error body (`VALIDATION_FAILED`) instead of a styled page; the same applies to the 409 repeat-confirmation response. Record whether this is acceptable for the MVP or should become a follow-up ticket.
+- Confirmation failures (validation, 409 repeat-confirmation) render styled pages, not raw JSON bodies — part of the direct-save workflow change. If a raw error body ever appears, that is a regression and should be reported.
 - The Enter-key advance behavior is script-based; verify it in your actual target browser.
 - Any deviation found during this test goes into the corresponding GitHub issue as evidence; acceptance-criteria checkboxes remain yours to tick.
 

@@ -4,8 +4,8 @@ const {
   saveManualDraftBatch,
   getManualDraftBatch,
   buildReviewRows,
-  markBatchPendingReview,
-  confirmIntakeBatch
+  confirmIntakeBatch,
+  confirmManualBatchFromInput
 } = require('../services/intake-batch-service');
 const { VALID_LOCATIONS, VALID_UNITS, VALID_DATE_TYPES } = require('../validation/intake-batch');
 
@@ -160,16 +160,36 @@ function createIntakeBatchRouter() {
       });
     }
 
-    if (action === 'review') {
-      if (req.body.batchId) {
-        await markBatchPendingReview(Number(req.body.batchId));
+    // Manual input goes straight to the inventory; the review workflow is
+    // reserved for AI-proposed input that needs human review (ADR-0002).
+    if (action === 'save-to-inventory') {
+      try {
+        const confirmation = await confirmManualBatchFromInput({
+          batchId: req.body.batchId ? Number(req.body.batchId) : null,
+          rows
+        });
+
+        res.redirect(`/inventory?notice=confirmed&created=${confirmation.createdItems.length}`);
+        return;
+      } catch (error) {
+        if (error.code === 'VALIDATION_FAILED') {
+          res.status(400).render('manual-batch', {
+            title: 'Manual intake batch',
+            batchId: req.body.batchId || '',
+            rows: rows.length > 0 ? rows : [createEmptyRow(defaultLocation)],
+            defaultLocation,
+            errors: error.details,
+            notice: null,
+            locations: Array.from(VALID_LOCATIONS),
+            units: Array.from(VALID_UNITS),
+            dateTypes: Array.from(VALID_DATE_TYPES)
+          });
+          return;
+        }
+
+        next(error);
+        return;
       }
-      return res.status(200).render('batch-review', createReviewLocals({
-        batchId: req.body.batchId || '',
-        rows,
-        defaultLocation,
-        notice: 'Batch moved to review.'
-      }));
     }
 
     try {
@@ -257,12 +277,30 @@ function createIntakeBatchRouter() {
       res.redirect(`/inventory?notice=confirmed&created=${confirmation.createdItems.length}`);
     } catch (error) {
       if (error.code === 'VALIDATION_FAILED') {
-        res.status(400).json({ status: 'error', code: error.code, details: error.details });
+        const batch = await getManualDraftBatch(Number(req.params.batchId));
+        res.status(400).render('batch-review', {
+          ...createReviewLocals({
+            batchId: req.params.batchId,
+            rows: batch ? batch.rows : [],
+            defaultLocation: '',
+            errors: error.details
+          }),
+          structuredFieldErrors: buildReviewErrorDetails(batch ? batch.rows : [])
+        });
         return;
       }
 
       if (error.code === 'INVALID_STATE_TRANSITION') {
-        res.status(409).json({ status: 'error', code: error.code, message: error.message });
+        const batch = await getManualDraftBatch(Number(req.params.batchId));
+        res.status(409).render('batch-review', {
+          ...createReviewLocals({
+            batchId: req.params.batchId,
+            rows: batch ? batch.rows : [],
+            defaultLocation: '',
+            errors: [error.message]
+          }),
+          structuredFieldErrors: buildReviewErrorDetails(batch ? batch.rows : [])
+        });
         return;
       }
 

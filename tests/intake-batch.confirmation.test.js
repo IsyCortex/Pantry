@@ -1,9 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { pool, resetAllTables } = require('./helpers/test-db');
-const { saveManualDraftBatch, markBatchPendingReview, confirmIntakeBatch, getManualDraftBatch } = require('../src/services/intake-batch-service');
-const { getActiveInventoryForDisplay } = require('../src/services/inventory-service');
-const { getConfirmedInventoryItem } = require('../src/services/inventory-service');
+const { saveManualDraftBatch, markBatchPendingReview, confirmIntakeBatch, confirmManualBatchFromInput, getManualDraftBatch } = require('../src/services/intake-batch-service');
+const { getActiveInventoryForDisplay, getConfirmedInventoryItem, createConfirmedInventoryItem } = require('../src/services/inventory-service');
 
 async function resetTables() {
   await resetAllTables();
@@ -175,4 +174,103 @@ test('concurrent confirmation yields one success, one rejection, and one invento
 
   const inventoryCount = await pool.query('SELECT COUNT(*)::int AS count FROM inventory_items');
   assert.equal(inventoryCount.rows[0].count, 1);
+});
+
+test('confirmManualBatchFromInput saves and confirms rows in one step without a review detour', async () => {
+  await resetTables();
+
+  const confirmation = await confirmManualBatchFromInput({
+    batchId: null,
+    rows: [
+      { name: 'Milk', quantity: '2', unit: 'package', location: 'fridge', expirationDate: '2026-08-20', dateType: 'best_before', accepted: true },
+      { name: 'Rice', quantity: '1', unit: 'package', location: 'pantry', expirationDate: '', dateType: '', accepted: true }
+    ]
+  });
+
+  assert.equal(confirmation.state, 'confirmed');
+  assert.equal(confirmation.createdItems.length, 2);
+  assert.equal(confirmation.createdItems[0].source_batch_id, confirmation.batchId);
+
+  const activeItems = await getActiveInventoryForDisplay();
+  assert.deepEqual(activeItems.map((item) => item.name), ['Milk', 'Rice']);
+
+  const batch = await getManualDraftBatch(confirmation.batchId);
+  assert.equal(batch.state, 'confirmed');
+  assert.equal(batch.rows.length, 2);
+});
+
+test('confirmManualBatchFromInput rejects an empty batch and creates no inventory', async () => {
+  await resetTables();
+
+  await assert.rejects(
+    () => confirmManualBatchFromInput({
+      batchId: null,
+      rows: [
+        { name: '', quantity: '', unit: '', location: '', expirationDate: '', dateType: '', accepted: true }
+      ]
+    }),
+    (error) => {
+      assert.equal(error.code, 'VALIDATION_FAILED');
+      assert.match(error.details.join(' '), /At least one included row/);
+      return true;
+    }
+  );
+
+  const inventoryCount = await pool.query('SELECT COUNT(*)::int AS count FROM inventory_items');
+  assert.equal(inventoryCount.rows[0].count, 0);
+  const batchCount = await pool.query('SELECT COUNT(*)::int AS count FROM intake_batches');
+  assert.equal(batchCount.rows[0].count, 0);
+});
+
+test('confirmManualBatchFromInput reports row validation details and stores nothing', async () => {
+  await resetTables();
+
+  await assert.rejects(
+    () => confirmManualBatchFromInput({
+      batchId: null,
+      rows: [
+        { name: 'Milk', quantity: '-1', unit: 'package', location: 'fridge', expirationDate: '2026-02-30', dateType: 'best_before', accepted: true }
+      ]
+    }),
+    (error) => {
+      assert.equal(error.code, 'VALIDATION_FAILED');
+      return true;
+    }
+  );
+
+  const inventoryCount = await pool.query('SELECT COUNT(*)::int AS count FROM inventory_items');
+  assert.equal(inventoryCount.rows[0].count, 0);
+  const batchCount = await pool.query('SELECT COUNT(*)::int AS count FROM intake_batches');
+  assert.equal(batchCount.rows[0].count, 0);
+});
+
+test('confirmManualBatchFromInput rolls back the whole transaction when a later insert fails', async () => {
+  await resetTables();
+
+  let callCount = 0;
+
+  await assert.rejects(
+    () => confirmManualBatchFromInput({
+      batchId: null,
+      rows: [
+        { name: 'Milk', quantity: '2', unit: 'package', location: 'fridge', expirationDate: '', dateType: '', accepted: true },
+        { name: 'Peas', quantity: '1', unit: 'package', location: 'freezer', expirationDate: '', dateType: '', accepted: true }
+      ]
+    }, {
+      inventoryWriter: async (item, client) => {
+        callCount += 1;
+        const created = await createConfirmedInventoryItem(item, client);
+        if (callCount === 2) {
+          throw new Error('DIRECT_SAVE_INSERT_FAILURE_AFTER_FIRST_SUCCESS');
+        }
+        return created;
+      }
+    }),
+    /DIRECT_SAVE_INSERT_FAILURE_AFTER_FIRST_SUCCESS/
+  );
+
+  const inventoryCount = await pool.query('SELECT COUNT(*)::int AS count FROM inventory_items');
+  assert.equal(inventoryCount.rows[0].count, 0);
+  const batchCount = await pool.query('SELECT COUNT(*)::int AS count FROM intake_batches');
+  assert.equal(batchCount.rows[0].count, 0);
 });
