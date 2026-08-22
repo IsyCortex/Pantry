@@ -4,7 +4,7 @@
 
 Human-owned acceptance testing of Milestone 1 (Tickets 1.1–1.6) through the browser, as defined by the working method in `PROJECT_PLAN.md`: acceptance remains product-owner-owned. This document only prepares that test; it does not replace the acceptance-criteria checklists in the GitHub issues.
 
-Repository state under test: branch `feature/m1`, commit `856d02b`, clean working tree.
+Repository state under test: branch `feature/m1`, commit `f7bae74`, clean working tree.
 
 ## 2. Environment setup
 
@@ -150,7 +150,7 @@ Manual entry bypasses review; the review step belongs to provider (AI) input and
 
 - Work through the ticket 1.2–1.6 issue checklists in order S1 → S10.
 - Collect one screenshot per scenario plus short notes as acceptance evidence.
-- State under test: branch `feature/m1` at commit `856d02b`.
+- State under test: branch `feature/m1` at commit `f7bae74`.
 
 
 
