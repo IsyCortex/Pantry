@@ -1,11 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const pool = require('../src/db/pool');
+const { pool, resetAllTables } = require('./helpers/test-db');
 const { createApp } = require('../src/app');
 const { saveManualDraftBatch } = require('../src/services/intake-batch-service');
 
 async function resetBatchTables() {
-  await pool.query('TRUNCATE TABLE intake_batch_items, intake_batches RESTART IDENTITY CASCADE');
+  await resetAllTables();
 }
 
 test('review page shows full batch, row-level issues, missing-date warnings, and duplicate warnings', async () => {

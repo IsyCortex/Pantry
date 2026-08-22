@@ -14,6 +14,7 @@ services:
       timeout: 5s
       retries: 10
     volumes:
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
       - pantry-postgres-data:/var/lib/postgresql/data
 
 volumes:

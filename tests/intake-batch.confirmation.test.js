@@ -1,12 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const pool = require('../src/db/pool');
+const { pool, resetAllTables } = require('./helpers/test-db');
 const { saveManualDraftBatch, markBatchPendingReview, confirmIntakeBatch, getManualDraftBatch } = require('../src/services/intake-batch-service');
 const { getActiveInventoryForDisplay } = require('../src/services/inventory-service');
 const { getConfirmedInventoryItem } = require('../src/services/inventory-service');
 
 async function resetTables() {
-  await pool.query('TRUNCATE TABLE inventory_items, intake_batch_items, intake_batches RESTART IDENTITY CASCADE');
+  await resetAllTables();
 }
 
 test('confirms accepted valid rows and excludes non-accepted rows', async () => {

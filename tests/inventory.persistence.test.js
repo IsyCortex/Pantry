@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const pool = require('../src/db/pool');
+const { pool, resetAllTables } = require('./helpers/test-db');
 const { createConfirmedInventoryItem, getConfirmedInventoryItem, updateConfirmedInventoryItem, markInventoryItemRemoved, getActiveInventoryForDisplay } = require('../src/services/inventory-service');
 const { saveManualDraftBatch, markBatchPendingReview, confirmIntakeBatch } = require('../src/services/intake-batch-service');
 
@@ -267,7 +267,6 @@ test('rejects unsupported lifecycle transitions for already removed items', asyn
 
 test('editing a confirmed inventory item does not rewrite the original intake batch row', async () => {
   await resetInventoryTable();
-  await pool.query('TRUNCATE TABLE intake_batch_items, intake_batches RESTART IDENTITY CASCADE');
 
   const batch = await saveManualDraftBatch({
     batchId: null,

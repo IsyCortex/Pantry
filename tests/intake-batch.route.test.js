@@ -1,10 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const pool = require('../src/db/pool');
+const { pool, resetAllTables } = require('./helpers/test-db');
 const { createApp } = require('../src/app');
 
 async function resetBatchTables() {
-  await pool.query('TRUNCATE TABLE intake_batch_items, intake_batches RESTART IDENTITY CASCADE');
+  await resetAllTables();
 }
 
 test('GET /batches/manual renders the manual batch editor', async () => {
@@ -347,7 +347,6 @@ test('POST /batches/manual shows success notices for draft saves and row actions
 
 test('confirming a reviewed batch adds items to inventory and returns with a notice', async () => {
   await resetBatchTables();
-  await pool.query('TRUNCATE TABLE inventory_items RESTART IDENTITY');
 
   const app = createApp();
   const server = app.listen(0);

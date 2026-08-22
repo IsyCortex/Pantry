@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const pool = require('../src/db/pool');
+const { pool, resetAllTables } = require('./helpers/test-db');
 const {
   ensureManualDraftBatch,
   saveManualDraftBatch,
@@ -8,7 +8,7 @@ const {
 } = require('../src/services/intake-batch-service');
 
 async function resetBatchTables() {
-  await pool.query('TRUNCATE TABLE intake_batch_items, intake_batches RESTART IDENTITY CASCADE');
+  await resetAllTables();
 }
 
 test('creates and resumes one manual draft batch', async () => {

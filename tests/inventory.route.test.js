@@ -1,10 +1,10 @@
     const test = require('node:test');
 const assert = require('node:assert/strict');
-const pool = require('../src/db/pool');
+const { pool, resetAllTables } = require('./helpers/test-db');
 const { createApp } = require('../src/app');
 
 async function resetInventoryTable() {
-  await pool.query('TRUNCATE TABLE inventory_items RESTART IDENTITY');
+  await resetAllTables();
 }
 
 async function insertInventoryItem(item) {
