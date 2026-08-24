@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include('partials/head', { title }) %>
+  <body>
+    <%- include('partials/nav', { notice }) %>
+    <main>
+      <h1><%= title %></h1>
+
+      <section class="view-actions">
+        <a href="/batches/manual" class="primary-btn" aria-label="Add item to inventory">+ Add item</a>
+      </section>
+
+      <% if (errorMessage) { %>
+        <section class="error">
+          <p><%= errorMessage %></p>
+        </section>
+      <% } else if (!items || items.length === 0) { %>
+        <section class="empty">
+          <p>No food has been added yet.</p>
+          <p>Confirmed batches populate the inventory.</p>
+          <p>Manual intake is the next step.</p>
+        </section>
+      <% } else { %>
+        <section class="sort-toolbar" aria-label="Sort inventory">
+          <span>Sort by:</span>
+          <button type="button" data-sort="date" aria-pressed="false">Expiration date</button>
+          <button type="button" data-sort="location" aria-pressed="false">Location</button>
+        </section>
+        <section class="inventory-list">
+          <% items.forEach((item) => { %>
+            <article class="inventory-item" data-date="<%= item.expirationDate || '' %>" data-location="<%= item.location %>">
+              <div class="inventory-row">
+                <strong><%= item.name %></strong>
+                <span><%= item.location %></span>
+              </div>
+              <p><a href="/inventory/<%= item.id %>/edit">Edit item</a></p>
+              <% if (item.quantity != null) { %>
+                <p class="meta">Quantity: <%= item.quantity %><% if (item.unit) { %> <%= item.unit %><% } %></p>
+              <% } %>
+              <% if (item.expirationDate) { %>
+                <p class="meta"><%= item.dateTypeLabel || 'Expiration date' %>: <%= item.expirationDate %></p>
+              <% } else { %>
+                <p class="meta">No expiration date</p>
+              <% } %>
+            </article>
+          <% }) %>
+        </section>
+        <script src="/inventory-sort.js"></script>
+      <% } %>
+    </main>
+  </body>
+  </html>

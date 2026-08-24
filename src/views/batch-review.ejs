@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include('partials/head', { title }) %>
+  <body>
+    <%- include('partials/nav', { notice }) %>
+    <main>
+      <h1><%= title %></h1>
+      <p>Inspect the complete batch before later confirmation.</p>
+
+      <% if (errors.length > 0) { %>
+        <section class="errors">
+          <h2>Validation errors</h2>
+          <ul>
+            <% errors.forEach((error) => { %>
+              <li><%= error %></li>
+            <% }) %>
+          </ul>
+        </section>
+      <% } %>
+
+      <form method="post" action="/batches/<%= batchId %>/review">
+        <input type="hidden" name="defaultLocation" value="<%= defaultLocation %>" />
+        <section class="review-list">
+          <% rows.forEach((row, index) => { %>
+            <article class="review-row <%= row.accepted ? '' : 'excluded' %>">
+              <h2>Row <%= index + 1 %></h2>
+              <label>
+                Include row on confirmation
+                <select name="rows[<%= index %>][accepted]">
+                  <option value="true" <%= row.accepted ? 'selected' : '' %>>Included</option>
+                  <option value="false" <%= row.accepted ? '' : 'selected' %>>Excluded</option>
+                </select>
+              </label>
+
+              <div class="field-grid">
+                <label>
+                  Name
+                  <input name="rows[<%= index %>][name]" value="<%= row.name %>" />
+                </label>
+                <label>
+                  Quantity
+                  <input name="rows[<%= index %>][quantity]" value="<%= row.quantity %>" />
+                </label>
+                <label>
+                  Unit
+                  <select name="rows[<%= index %>][unit]">
+                    <option value="">No unit</option>
+                    <% units.forEach((unit) => { %>
+                      <option value="<%= unit %>" <%= row.unit === unit ? 'selected' : '' %>><%= unit %></option>
+                    <% }) %>
+                  </select>
+                </label>
+                <label>
+                  Location
+                  <select name="rows[<%= index %>][location]">
+                    <option value="">No location yet</option>
+                    <% locations.forEach((location) => { %>
+                      <option value="<%= location %>" <%= row.location === location ? 'selected' : '' %>><%= location %></option>
+                    <% }) %>
+                  </select>
+                </label>
+                <label>
+                  Expiration date
+                  <input type="date" name="rows[<%= index %>][expirationDate]" value="<%= row.expirationDate %>" />
+                </label>
+                <label>
+                  Date type
+                  <select name="rows[<%= index %>][dateType]">
+                    <option value="">No date type</option>
+                    <% dateTypes.forEach((dateType) => { %>
+                      <option value="<%= dateType %>" <%= row.dateType === dateType ? 'selected' : '' %>><%= dateType %></option>
+                    <% }) %>
+                  </select>
+                </label>
+              </div>
+
+              <% if (row.rowErrors.missingName || row.rowErrors.missingLocation) { %>
+                <div class="errors">
+                  <% if (row.rowErrors.missingName) { %><p>Name is required before confirmation.</p><% } %>
+                  <% if (row.rowErrors.missingLocation) { %><p>Storage location is required before confirmation.</p><% } %>
+                </div>
+              <% } %>
+
+              <% const fieldErrors = (typeof structuredFieldErrors !== 'undefined' && structuredFieldErrors[index]) ? structuredFieldErrors[index] : row.fieldErrors; %>
+              <% if (fieldErrors.quantity || fieldErrors.unit || fieldErrors.expirationDate || fieldErrors.dateType) { %>
+                <div class="errors">
+                  <% if (fieldErrors.quantity) { %><p><%= fieldErrors.quantity %></p><% } %>
+                  <% if (fieldErrors.unit) { %><p><%= fieldErrors.unit %></p><% } %>
+                  <% if (fieldErrors.expirationDate) { %><p><%= fieldErrors.expirationDate %></p><% } %>
+                  <% if (fieldErrors.dateType) { %><p><%= fieldErrors.dateType %></p><% } %>
+                </div>
+              <% } %>
+
+              <% if (row.attentionReasons.length > 0) { %>
+                <div class="warnings">
+                  <h3>Attention reasons</h3>
+                  <ul>
+                    <% row.attentionReasons.forEach((reason) => { %>
+                      <li><%= reason %></li>
+                    <% }) %>
+                  </ul>
+                </div>
+              <% } %>
+            </article>
+          <% }) %>
+        </section>
+
+        <button type="submit">Save review corrections</button>
+      </form>
+
+      <hr />
+
+      <form method="post" action="/batches/<%= batchId %>/confirm">
+        <p>Once the batch is reviewed, confirm it to move accepted items into inventory.</p>
+        <button type="submit">Confirm batch and add items to inventory</button>
+      </form>
+    </main>
+  </body>
+  </html>

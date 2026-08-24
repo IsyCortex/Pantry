@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title><%= title %></title>
-  </head>
+  <%- include('partials/head', { title }) %>
   <body>
+    <%- include('partials/nav', { notice }) %>
     <main>
       <h1><%= title %></h1>
       <p><%= message %></p>
+      <p><a href="/batches/manual">Start a manual intake batch</a></p>
+      <p><a href="/inventory">View active inventory</a></p>
     </main>
   </body>
   </html>

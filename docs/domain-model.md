@@ -39,6 +39,13 @@ One of:
 - `unspecified`
 - `null` when no date exists
 
+Relationship rules:
+
+- Without an expiration date, date type is `null`.
+- With an expiration date but no identified type, date type is `unspecified`.
+- With an explicitly identified type, date type is `best_before` or `use_by`.
+- A non-null date type without an expiration date is invalid.
+
 ### Attention reason
 
 An explainable condition requiring or inviting review. Initial reasons include:

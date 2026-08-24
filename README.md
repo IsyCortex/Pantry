@@ -7,8 +7,8 @@ The MVP deliberately concentrates on inventory visibility and expiration awarene
 ## Primary workflow
 
 1. Enter groceries manually or describe a batch in natural language.
-2. Inspect and correct the resulting draft batch.
-3. Confirm the batch into the active inventory.
+2. Manually entered batches are saved straight to the active inventory in one step.
+3. AI-proposed batches are inspected and corrected through a human review step before confirmation.
 4. Review inventory by location and expiration status.
 5. Mark items as used up or discarded when they leave the inventory.
 
@@ -19,10 +19,12 @@ No AI-generated proposal becomes inventory without explicit human confirmation.
 | Document | Purpose |
 | --- | --- |
 | [Project plan](PROJECT_PLAN.md) | Milestones, tickets, acceptance criteria, and technical progress checklists |
+| [Development workflow](docs/development-workflow.md) | Operational workflow: ownership, ticket and blocker lifecycles, technical-checklist ownership, testing, Gitflow, evidence, and context loading |
 | [Product scope](docs/product-scope.md) | Product goal, users, workflows, MVP boundary, success criteria, and scope acceptance |
 | [Domain model](docs/domain-model.md) | Domain language, entities, lifecycle rules, and validation invariants |
 | [Architecture](docs/architecture.md) | Application structure, technical boundaries, persistence, testing strategy, and release workflow constraints |
 | [Input pipeline](docs/input-pipeline.md) | Manual and AI-assisted batch ingestion, review boundary, and future voice/receipt adapters |
+| [Engineering log](docs/engineering-log.md) | Implementation-phase engineering notes, deviations, and evidence summaries |
 
 ## Documentation strategy
 
@@ -34,19 +36,20 @@ The documentation is intentionally split rather than maintained as one large fil
 - Architecture decisions should be reviewable independently from product planning.
 - The input pipeline deserves a dedicated document because it is the main extensibility and AI-safety boundary.
 
-Architectural decisions that require trade-off records should later be added as individual ADRs under `docs/adr/`. An engineering log should be introduced when implementation begins and updated alongside ticket progress.
+Architectural decisions that require trade-off records are maintained as individual ADRs under `docs/adr/`. The engineering log is maintained under `docs/engineering-log.md` and should be updated alongside ticket progress.
 
 ## Delivery workflow
 
-- Ticket execution follows the technical ticket-state workflow documented in the [project plan](PROJECT_PLAN.md#ticket-workflow-states).
+- Ticket execution follows the operational workflow documented in [`docs/development-workflow.md`](docs/development-workflow.md#ticket-workflow-states).
 - The GitHub issue is the authoritative live technical checklist; technical items are updated only after implementation evidence is committed and pushed.
 - The implementation partner maintains only `Technical plan and progress` checkboxes and never checks acceptance criteria without explicit instruction.
+- Formally tracked blockers follow the blocker lifecycle documented in [`docs/development-workflow.md`](docs/development-workflow.md#blocker-lifecycle), with detailed incident records stored under `docs/blockers/`.
 - Product acceptance and movement to `Done` remain the project owner's responsibility.
-- Each milestone is treated as a release and follows the Gitflow release responsibilities documented in the [project plan](PROJECT_PLAN.md#release-and-gitflow-responsibilities).
+- Each milestone is treated as a release and follows the Gitflow release responsibilities documented in [`docs/development-workflow.md`](docs/development-workflow.md#release-and-gitflow-responsibilities).
 
 ## Current status
 
-Planning. No implementation stack is considered final until the relevant M0 ticket is reviewed and accepted.
+Milestone 0 is complete and released as `v0.1.2`. The implementation stack, foundational architecture, and analyzer-contract specification are accepted for the current development phase.
 
 ## Local foundation setup
 
@@ -128,6 +131,10 @@ curl http://127.0.0.1:3000/health/db
 npm test
 ```
 
+`npm test` runs Node's test runner with `--test-concurrency=1`.
+
+DB-backed tests currently share the repository-controlled test database and use serialized execution to avoid cross-file fixture interference.
+
 The foundation intentionally excludes inventory, batch intake, natural-language analysis, and other later feature workflows.
 
 ## M0 implementation record
@@ -151,7 +158,6 @@ The foundation intentionally excludes inventory, batch intake, natural-language 
 
 - Executable analyzer-response enforcement and error hardening remain in Ticket 2.3.
 - Inventory persistence tables and feature workflows remain for Milestone 1 tickets.
-- Release tagging convention has not yet been established and must be approved before the first release tag is created.
 
 ### Consequences for subsequent work
 

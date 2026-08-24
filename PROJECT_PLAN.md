@@ -1,60 +1,10 @@
 # Pantry MVP Project Plan
 
-## Working method
+## Workflow
 
-- Work proceeds through milestones containing small, reviewable tickets.
-- Every ticket has acceptance criteria and a technical plan/progress checklist.
-- Unless explicitly requested by the product owner, acceptance-criteria checkboxes are not edited or checked by the implementation partner; acceptance testing remains human-owned.
-- Product scope and acceptance remain human-owned.
-- The implementation partner inspects and reports before changing code.
-- Automated tests use deterministic providers; live-model evaluation is separate.
-- Product definitions belong in tickets and documentation. Implementation evidence and deviations are recorded in ticket progress and the engineering log.
-- A ticket is complete only when its acceptance criteria have evidence and its documentation is current.
+The authoritative operational workflow — ownership and responsibility boundaries, the ticket and blocker lifecycles, acceptance versus technical-checklist ownership, the implementation → verify → commit → push → issue-sync order, serial DB-backed test execution, the blocker workflow and document format, Gitflow release handling, and evidence and context-loading expectations — is documented in [`docs/development-workflow.md`](docs/development-workflow.md).
 
-## Ticket workflow states
-
-- `Todo`: the ticket exists and has not been started.
-- `In Progress`: the implementation partner is actively working the ticket after explicit instruction from the product owner to begin.
-- `Blocked`: technical work cannot continue; the exact blocker and required next action must be recorded in the issue.
-- `Ready for Acceptance`: all technical-plan items are complete, required verification has passed, and an acceptance handoff with supporting evidence has been recorded in the issue.
-- `Done`: the product owner has tested the ticket against its acceptance criteria, accepted it, and finalized the work.
-
-## Ticket-state responsibilities
-
-- The implementation partner manages technical ticket-state transitions into `In Progress`, `Blocked`, and `Ready for Acceptance`.
-- The GitHub issue is the authoritative live technical checklist for each ticket. `PROJECT_PLAN.md` defines scope and intended work but does not mirror live technical progress.
-- Ticket work follows this order: activate the ticket, implement locally, verify, commit, push, and only then update the live `Technical plan and progress` checklist in the GitHub issue.
-- The implementation partner maintains only the `Technical plan and progress` checkboxes and checks an item only when repository evidence has been committed and pushed.
-- The implementation partner records relevant files, commit SHAs, verification evidence, decisions, and blockers in the GitHub issue.
-- If work cannot continue, the implementation partner moves the ticket to `Blocked` and records the exact blocker and required next action.
-- When all technical-plan items are complete, the implementation partner performs a full ticket review, pushes any necessary corrections, and then moves the ticket to `Ready for Acceptance` with evidence for every acceptance criterion.
-- The implementation partner never checks acceptance-criteria boxes, moves a ticket to `Done`, closes an issue, or closes a milestone unless explicitly instructed.
-- Product acceptance, movement to `Done`, and final completion remain the responsibility of the product owner.
-
-## Release and Gitflow responsibilities
-
-- Each milestone is treated as a release.
-- Pantry release tags follow Semantic Versioning in the format `vMAJOR.MINOR.PATCH`.
-- During pre-1.0 development, each completed milestone release increments the minor version, corrective non-milestone releases increment the patch version, and prerelease candidates use suffixes such as `-rc.1` when needed.
-- Release tags must be annotated, must point to the final released commit, and must never be reused or moved after publication.
-- Release preparation begins only after every ticket in the milestone has been accepted and moved to `Done`, and the product owner explicitly authorizes release preparation.
-- During release preparation, the implementation partner verifies milestone tickets, repository state, tests, documentation, and version.
-- The implementation partner prepares the proposed release version, functional release summary, included-ticket list, verification evidence, changelog, annotated tag, and GitHub Release materials.
-- Release commit messages identify the Pantry version and milestone and describe delivered functionality in user-facing or system-behavior terms rather than merely listing files or implementation tasks.
-- Before merges, tagging, release publication, version changes, or milestone closure, the implementation partner presents the proposed version, included tickets, test evidence, release commit message, and release notes for explicit project-owner approval.
-- The implementation partner must not merge into `main` or `develop`, create a tag, publish a GitHub Release, begin release publication, or close a milestone without explicit project-owner approval.
-
-## Gitflow release sequence
-
-1. Complete milestone tickets and move them to `Done` through owner acceptance.
-2. Receive explicit authorization to begin release preparation.
-3. Prepare the release version, release commit, functional release notes, included-ticket list, and verification evidence on the authorized release branch.
-4. Present the full release package for project-owner approval before any merge, tag, publication, or milestone closure.
-5. Merge the approved release into `main` with an explicit merge commit.
-6. Create an annotated version tag from the approved release state.
-7. Merge the release back into `develop`.
-8. Publish the GitHub Release from the approved release notes.
-9. Close the milestone only after explicit project-owner approval.
+`PROJECT_PLAN.md` defines milestone scope, tickets, acceptance criteria, and technical progress checklists, and no longer mirrors live workflow rules. It is retained for the milestone plan and per-ticket checklists below.
 
 ## MVP path
 
@@ -195,7 +145,7 @@
 
 - [ ] Inventory items can be created and retrieved.
 - [ ] Confirmed items require a name and storage location.
-- [ ] Quantity, unit, expiration date, and date type are optional.
+- [ ] Quantity, unit, and expiration date are optional; date type follows the documented expiration-date nullability rules.
 - [ ] Invalid values are rejected.
 - [ ] Database operations use parameterized queries.
 - [ ] Persistence behavior is covered by automated tests.
@@ -238,7 +188,10 @@
 - [ ] Enter creates or advances to the next row where appropriate.
 - [ ] A default storage location applies only to newly created rows.
 - [ ] Draft work survives validation errors.
+- [ ] An unconfirmed draft batch can be resumed after a page reload without recreating its rows.
 - [ ] At least 20 items can be entered without navigating away.
+- [ ] Manually entered batches can be saved directly to the active inventory in one step.
+- [ ] The manual editor never offers a review action that cannot be performed (controls for unavailable actions are not rendered).
 
 ### Technical plan and progress
 
@@ -250,6 +203,7 @@
 - [ ] Implement default-location behavior
 - [ ] Add draft persistence tests
 - [ ] Add interface tests
+- [ ] Add direct-save service and route action
 
 ## Ticket 1.4 — Review and validate an intake batch
 
@@ -263,6 +217,7 @@
 - [ ] Users can exclude individual rows.
 - [ ] Corrections do not require recreating the batch.
 - [ ] Draft rows never appear in active inventory.
+- [ ] The review workflow applies to AI-proposed (provider) input only; manually entered batches are saved directly without a review detour (ADR-0002).
 
 ### Technical plan and progress
 
@@ -281,6 +236,7 @@
 - [ ] The operation uses one database transaction.
 - [ ] Failure creates no partial inventory.
 - [ ] A confirmed batch cannot be confirmed again.
+- [ ] Confirming a batch without any included rows is rejected with no side effects.
 - [ ] Draft-only and provider metadata do not leak into inventory fields.
 - [ ] Created items retain their source-batch relationship.
 - [ ] Confirmed items immediately appear in active inventory.
@@ -294,6 +250,7 @@
 - [ ] Record source-batch relationships
 - [ ] Add rollback tests
 - [ ] Add repeat-confirmation tests
+- [ ] Add empty-batch rejection tests
 
 ## Ticket 1.6 — Edit and remove inventory items
 
@@ -612,7 +569,7 @@
 - [ ] Finalize architecture documentation
 - [ ] Complete ADR set
 - [ ] Create seed/demo scenario
-- [ ] Add screenshots or concise walkthrough
+- [ ] Add a concise walkthrough (text only)
 - [ ] Finalize testing documentation
 - [ ] Finalize engineering log
 - [ ] Perform tracked-secret and machine-specific configuration review

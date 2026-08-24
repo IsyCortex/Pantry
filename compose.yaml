@@ -14,7 +14,11 @@ services:
       timeout: 5s
       retries: 10
     volumes:
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
       - pantry-postgres-data:/var/lib/postgresql/data
 
 volumes:
+  # Fresh-reset contract: `npm run db:reset` (canonical) and the documented
+  # clean-migration path both use `docker compose down -v` so this named
+  # volume is removed. Plain `docker compose down` deliberately keeps it.
   pantry-postgres-data:

@@ -2,11 +2,11 @@
 
 ## Status
 
-This document defines the proposed architecture to be reviewed in M0. The stack is not final until Ticket 0.3 is accepted.
+This document defines the accepted Pantry architecture established in Milestone 0.
 
-## Proposed stack
+## Application stack
 
-The Fleet Maintenance reference stack remains suitable:
+The accepted stack for Pantry is:
 
 - Node.js LTS
 - Plain JavaScript
@@ -70,7 +70,7 @@ docs/
   adr/
 ```
 
-The exact structure should be finalized only after repository inspection and the architecture ticket.
+The repository structure may continue to evolve empirically during implementation, provided it preserves the accepted architectural boundaries between routes, services, database access, validation, and intake-processing responsibilities.
 
 ## Canonical boundary
 
@@ -165,6 +165,8 @@ Known errors should produce safe user-facing messages. Provider payloads and dat
 - Inventory sorting and filtering
 
 Automated tests must not require a live language model.
+
+DB-backed automated tests currently use serialized execution through the repository test command so files that share the repository-controlled test database do not erase one another's fixtures during setup.
 
 ### Live integration evaluation
 

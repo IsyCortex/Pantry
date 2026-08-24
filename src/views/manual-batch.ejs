@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include('partials/head', { title }) %>
+  <body>
+    <%- include('partials/nav', { notice }) %>
+    <main>
+      <h1><%= title %></h1>
+      <p class="subtle">Enter your items and save the batch straight to the active inventory.</p>
+
+      <% if (errors.length > 0) { %>
+        <section class="errors">
+          <h2>Validation errors</h2>
+          <ul>
+            <% errors.forEach((error) => { %>
+              <li><%= error %></li>
+            <% }) %>
+          </ul>
+        </section>
+      <% } %>
+
+      <form method="post" action="/batches/manual">
+        <input type="hidden" name="batchId" value="<%= batchId %>" />
+
+        <div class="toolbar">
+          <label>
+            Default location for newly created rows
+            <select name="defaultLocation">
+              <option value="">No default</option>
+              <% locations.forEach((location) => { %>
+                <option value="<%= location %>" <%= defaultLocation === location ? 'selected' : '' %>><%= location %></option>
+              <% }) %>
+            </select>
+          </label>
+          <button type="submit" name="action" value="add-row">Add row</button>
+          <button type="submit" name="action" value="save">Save draft batch</button>
+          <button type="submit" name="action" value="save-to-inventory" class="primary-btn">Save to inventory</button>
+        </div>
+
+        <section class="batch-grid">
+          <% rows.forEach((row, index) => { %>
+            <article class="batch-row">
+              <div class="row-actions">
+                <strong>Row <%= index + 1 %></strong>
+                <button type="submit" name="action" value="move-up" name="action" formaction="/batches/manual" aria-label="Move row <%= index + 1 %> up">
+                  <span class="sr-only">Move row <%= index + 1 %> up</span>Move up
+                </button>
+                <button type="submit" name="action" value="move-down" formaction="/batches/manual" name="action" aria-label="Move row <%= index + 1 %> down">
+                  <span class="sr-only">Move row <%= index + 1 %> down</span>Move down
+                </button>
+                <button type="submit" name="action" value="duplicate-row" formaction="/batches/manual" name="action" aria-label="Duplicate row <%= index + 1 %>">
+                  <span class="sr-only">Duplicate row <%= index + 1 %></span>Duplicate
+                </button>
+                <button type="submit" name="action" value="remove-row" formaction="/batches/manual" name="action" aria-label="Remove row <%= index + 1 %>">
+                  <span class="sr-only">Remove row <%= index + 1 %></span>Remove
+                </button>
+                <button type="submit" name="action" value="enter-row" formaction="/batches/manual" name="action" aria-label="Advance from row <%= index + 1 %>">
+                  <span class="sr-only">Advance from row <%= index + 1 %></span>Enter advances
+                </button>
+                <button type="submit" class="sr-only" name="actionRowIndex" value="<%= index %>" data-row-submit-index="<%= index %>">row-submit-index</button>
+              </div>
+
+              <div class="field-grid">
+                <label>
+                  Name
+                  <input name="rows[<%= index %>][name]" value="<%= row.name %>" data-enter-target="name" />
+                </label>
+
+                <label>
+                  Quantity
+                  <input name="rows[<%= index %>][quantity]" inputmode="decimal" value="<%= row.quantity %>" data-enter-target="quantity" />
+                </label>
+
+                <label>
+                  Unit
+                  <select name="rows[<%= index %>][unit]" data-enter-target="unit">
+                    <option value="">No unit</option>
+                    <% units.forEach((unit) => { %>
+                      <option value="<%= unit %>" <%= row.unit === unit ? 'selected' : '' %>><%= unit %></option>
+                    <% }) %>
+                  </select>
+                </label>
+
+                <label>
+                  Location
+                  <select name="rows[<%= index %>][location]" data-enter-target="location">
+                    <option value="">No location yet</option>
+                    <% locations.forEach((location) => { %>
+                      <option value="<%= location %>" <%= row.location === location ? 'selected' : '' %>><%= location %></option>
+                    <% }) %>
+                  </select>
+                </label>
+
+                <label>
+                  Expiration date
+                  <input type="date" name="rows[<%= index %>][expirationDate]" value="<%= row.expirationDate %>" data-enter-target="expirationDate" />
+                </label>
+
+                <label>
+                  Date type
+                  <select name="rows[<%= index %>][dateType]" data-enter-target="dateType">
+                    <option value="">No date type</option>
+                    <% dateTypes.forEach((dateType) => { %>
+                      <option value="<%= dateType %>" <%= row.dateType === dateType ? 'selected' : '' %>><%= dateType %></option>
+                    <% }) %>
+                  </select>
+                </label>
+              </div>
+            </article>
+          <% }) %>
+        </section>
+      </form>
+      <script>
+        (function () {
+          const form = document.querySelector('form[action="/batches/manual"]');
+          if (!form) return;
+
+          form.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) {
+              return;
+            }
+
+            const target = event.target;
+            if (!target || !target.name || !target.name.startsWith('rows[')) {
+              return;
+            }
+
+            event.preventDefault();
+            const match = target.name.match(/^rows\[(\d+)\]/);
+            if (!match) {
+              return;
+            }
+
+            const rowIndex = Number(match[1]);
+            const currentRowTargets = Array.from(form.querySelectorAll(`[name^="rows[${rowIndex}]"][data-enter-target]`));
+            const currentIndex = currentRowTargets.indexOf(target);
+            const nextInRow = currentRowTargets[currentIndex + 1];
+            if (nextInRow) {
+              nextInRow.focus();
+              return;
+            }
+
+            const nextRowFirstField = form.querySelector(`[name="rows[${rowIndex + 1}][name]"]`);
+            if (nextRowFirstField) {
+              nextRowFirstField.focus();
+              return;
+            }
+
+            const submitter = form.querySelector(`button[data-row-submit-index="${rowIndex}"]`) || form.querySelector('button[name="action"][value="add-row"]');
+            if (submitter && typeof form.requestSubmit === 'function') {
+              form.requestSubmit(submitter);
+            } else {
+              form.submit();
+            }
+          });
+        })();
+      </script>
+    </main>
+  </body>
+  </html>
