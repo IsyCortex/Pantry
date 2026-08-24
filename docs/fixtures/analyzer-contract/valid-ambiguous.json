@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "name": "milk",
+      "quantity": 2,
+      "unit": "package",
+      "location": "fridge",
+      "expirationDate": null,
+      "dateType": null
+    },
+    {
+      "name": "rice",
+      "quantity": null,
+      "unit": null,
+      "location": "pantry",
+      "expirationDate": null,
+      "dateType": null
+    },
+    {
+      "name": "eggs",
+      "quantity": null,
+      "unit": null,
+      "location": "fridge",
+      "expirationDate": null,
+      "dateType": null
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "items": [
+    {
+      "name": "milk",
+      "quantity": 2,
+      "unit": "package",
+      "location": "fridge",
+      "expirationDate": "2026-08-20",
+      "dateType": "best_before"
+    },
+    {
+      "name": "rice",
+      "quantity": 1,
+      "unit": "package",
+      "location": "pantry",
+      "expirationDate": null,
+      "dateType": null
+    }
+  ]
+}
