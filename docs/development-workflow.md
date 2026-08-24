@@ -1,105 +1,267 @@
-# Development workflow
+Development workflow
 
-Authoritative operational workflow for the implementation partner (Cline) across Pantry milestones. This compiles the workflow established and approved during M0 and M1; it defines *how* work is done, not *what* is built. For milestone scope, tickets, and acceptance criteria, see [`PROJECT_PLAN.md`](../PROJECT_PLAN.md). For local setup and environment, see [`README.md`](../README.md). For architecture, testing strategy, and release constraints, see [`docs/architecture.md`](architecture.md). Per the repository's split-documentation strategy, this is the single source of truth for operational workflow; `PROJECT_PLAN.md` previously mirrored these rules and now points here instead.
+Authoritative operational workflow for the implementation partner (Cline) across Pantry milestones. This compiles the workflow established and approved during M0 and M1; it defines how work is done, not what is built. For milestone scope and tickets, see PROJECT_PLAN.md. For local setup and environment, see README.md. For technical architecture and domain boundaries, see docs/architecture.md and docs/domain-model.md.
 
-## Ownership and responsibility boundaries
+This document is the single source of truth for operational workflow. Other documents should link here instead of duplicating these rules.
 
-- **Product owner** — defines requirements, prioritizes work, checks acceptance criteria, accepts tickets, and authorizes releases.
-- **Cline (implementation partner)** — architecture, implementation, technical-plan/progress checkboxes, tests, commits, pushes, issue evidence, Gitflow operations, and authorized board transitions.
-- **Cline must never** — check acceptance-criteria boxes, declare owner acceptance, or move a ticket to `Done`, close an issue, or close a milestone without explicit instruction.
-- **ChatGPT** — repository role is read-only and advisory.
-- **Repository or board mutations occur only when explicitly authorized.**
+Ownership and responsibility boundaries
 
-## Authoritative-source precedence
+Product owner — defines requirements, prioritizes work, checks acceptance criteria, accepts tickets, and authorizes releases.
 
-1. GitHub issues — live technical checklist, evidence, and blockers for each ticket.
-2. `docs/development-workflow.md` — operational workflow rules.
-3. `PROJECT_PLAN.md` — milestone scope, ticket list, acceptance criteria, and tech-progress checklists (not live workflow rules).
-4. `docs/architecture.md` — application structure, technical boundaries, persistence, testing strategy, and release constraints.
-5. `docs/domain-model.md` — domain language, entities, lifecycle rules, and validation invariants.
-6. `docs/engineering-log.md` — implementation-phase notes, deviations, and evidence summaries.
-7. `docs/blockers/` — detailed blocker incident records.
+Cline (implementation partner) — owns architecture, implementation, technical-plan/progress checkboxes, tests, commits, pushes, issue evidence, Gitflow operations, and authorized board transitions.
 
-## Ticket workflow states
+Cline must never — check acceptance-criteria boxes, declare owner acceptance, or move a ticket to Done, close an issue, or close a milestone without explicit instruction.
 
-- `Todo` — the ticket exists and has not been started.
-- `In Progress` — the implementation partner is actively working the ticket after explicit instruction from the product owner to begin. *(Cline-managed.)*
-- `Blocked` — technical work cannot continue; the exact blocker and required next action must be recorded in the issue. *(Cline-managed.)*
-- `Ready for Acceptance` — all technical-plan items are complete, required verification has passed, and an acceptance handoff with supporting evidence has been recorded in the issue. *(Cline-managed.)*
-- `Done` — the product owner has tested the ticket against its acceptance criteria, accepted it, and finalized the work. *(Owner-managed.)*
+ChatGPT — repository role is read-only and advisory.
 
-## Acceptance versus technical-checklist ownership
+Repository or board mutations occur only when explicitly authorized. Authorization to implement a ticket covers the repository changes reasonably required for that ticket, but does not authorize acceptance, release operations, unrelated scope expansion, or destructive operations.
 
-- The GitHub issue is the authoritative live technical checklist; `PROJECT_PLAN.md` defines scope and intended work but does not mirror live technical progress.
-- The implementation partner maintains only the `Technical plan and progress` checkboxes, checking an item only when repository evidence has been committed and pushed.
-- The implementation partner never checks acceptance-criteria boxes, moves a ticket to `Done`, closes an issue, or closes a milestone unless explicitly instructed.
+Authoritative-source precedence
 
-## Implementation, verification, commit, push, and issue-synchronization order
+A current explicit product-owner instruction has precedence over repository and GitHub sources. If an instruction appears to change established scope, acceptance criteria, responsibilities, or workflow, Cline must identify the change and obtain confirmation before updating an authoritative source.
 
-Process a ticket in this order, and update the live checklist **only after** the push:
+Subject to that rule, use this precedence:
 
-1. Activate the ticket (move to `In Progress`).
-2. Implement locally on the milestone branch (e.g., `feature/m1`); do not commit to `main` or `develop`.
-3. Verify — focused tests → related tests → complete serial suite (`npm test`) → clean-migration check when persistence is affected.
-4. Commit (focused commit; free-form imperative subject, matching the repository style).
-5. Push to the feature branch.
-6. Update the live `Technical plan and progress` checklist; record relevant files, commit SHAs, verification evidence, decisions, and blockers in the GitHub issue.
+The ticket's GitHub issue — live acceptance criteria, technical checklist, evidence, and blockers.
 
-If work cannot continue, move the ticket to `Blocked` and record the exact blocker and next diagnostic/resolution action before doing anything else.
+docs/development-workflow.md — operational workflow rules.
 
-## Test diagnosis, failure classification, and reruns
+PROJECT_PLAN.md — milestone vision, scope, ticket relationships, and planned outcomes; it does not mirror live technical progress.
 
-- Diagnose the smallest reproducible failure first.
-- Classify the failure (production defect vs. test/fixture defect) **before** changing code.
-- When the application is wrong, correct production behavior **before** changing tests.
-- Change a fixture or expectation only when it is demonstrably incorrect.
-- Keep each test focused on one primary behavior.
-- Rerun order: the **focused** test → **related** tests → the **complete serial** suite → and, when persistence is affected, a **clean-migration** verification.
+docs/architecture.md — application structure and technical boundaries.
 
-## Test execution and database isolation
+docs/domain-model.md — domain language, entities, lifecycle rules, and validation invariants.
 
-- `npm test` runs `node --test --test-concurrency=1`.
-- DB-backed tests run as **one process** with **serialized** execution (`--test-concurrency=1`).
-- Tests run against a **dedicated `pantry_test` database** (`TEST_DATABASE_URL`), never the development database (`DATABASE_URL`). `tests/helpers/test-db.js` raises a hard error if `TEST_DATABASE_URL` points at the development database, (re)creates and migrates the test database on first use, and truncates the shared M1 tables (`resetAllTables`) before tests.
-- Never run competing DB-backed commands against the same test database.
+docs/engineering-log.md — implementation-phase notes, deviations, and evidence summaries.
 
-## Blocker lifecycle
+docs/blockers/ — detailed blocker incident records.
 
-- A ticket moves to `Blocked` only when a formally tracked blocker prevents further work.
-- While an active blocker is unresolved, the GitHub issue carries a concurrent active-blocker section covering observed symptoms, affected workflow steps, currently known evidence, and the next diagnostic or resolution action.
-- After a blocker is resolved and verified, create a blocker-resolution document under `docs/blockers/` (filename `YYYY-MM-DD-ticket-N.short-description.md`) **before** updating the GitHub issue. Record: related ticket and milestone, dates encountered and resolved, context, symptoms, impact, diagnostic steps and evidence, confirmed root cause (causes must not be invented), resolution, verification, recurrence indicators and recovery guidance, and related commits or files. Do not include secrets, sensitive configuration, or excessive raw logs.
-- After the blocker document is committed and pushed, replace the issue's active-blocker section with a concise resolved summary containing the dates, confirmed cause, resolution, verification result, and a link to the blocker document.
-- A ticket returns from `Blocked` to `In Progress` only after the resolution has been verified.
+If authoritative sources conflict and precedence does not resolve the conflict safely, stop and report it rather than silently choosing or rewriting scope.
 
-Format examples: `docs/blockers/2026-08-18-ticket-1.5-migration-chain-source-batch-id.md`, `docs/blockers/2026-08-19-ticket-1.7-bigint-identifier-type-consistency.md`.
+Ticket workflow states
 
-## Release and Gitflow responsibilities
+Todo — the ticket exists and has not been started.
 
-- Each milestone is treated as a release. Pantry release tags follow Semantic Versioning in the format `vMAJOR.MINOR.PATCH`; during pre-1.0 development, each completed milestone release increments the minor version, corrective non-milestone releases increment the patch version, and prerelease candidates use suffixes such as `-rc.1` when needed.
-- Release tags must be annotated, must point to the final released commit, and must never be reused or moved after publication.
-- Release preparation begins only after every ticket in the milestone has been accepted and moved to `Done`, and the product owner explicitly authorizes release preparation.
-- During release preparation, the implementation partner verifies milestone tickets, repository state, tests, documentation, and version, then prepares the proposed release version, functional release summary, included-ticket list, verification evidence, changelog, release commit, annotated tag, and GitHub Release materials.
-- Before merges, tagging, release publication, version changes, or milestone closure, the implementation partner presents the proposed version, included tickets, test evidence, release commit message, and release notes for explicit project-owner approval.
-- The implementation partner must not merge into `main` or `develop`, create a tag, publish a GitHub Release, begin release publication, or close a milestone without explicit project-owner approval.
+In Progress — Cline is actively working on the ticket after explicit instruction from the product owner to begin. (Cline-managed.)
 
-Release sequence: 1) complete and accept milestone tickets; 2) receive explicit authorization; 3) prepare the release on the authorized release branch; 4) present the full release package for project-owner approval before any merge, tag, or milestone closure; 5) merge the approved release into `main` with an explicit merge commit; 6) create an annotated version tag from the approved state; 7) merge the release back into `develop`; 8) publish the GitHub Release from the approved release notes; 9) close the milestone only after explicit project-owner approval.
+Blocked — a formally tracked blocker prevents meaningful progress, when this option exists on the project board. (Cline-managed.)
 
-## Evidence requirements
+Ready for Acceptance — all technical-plan items are complete, required verification has passed, pushed evidence has been recorded, and an acceptance handoff is available. (Cline-managed.)
 
-- Evidence is **text only; screenshots are not required** acceptance evidence.
-- Primary evidence is: the implementation, the automated-test suite, a clean migration chain applied in order, and persisted database behavior.
-- Record the tested branch/commit, environment, scenarios exercised, and pass/fail result for each.
-- Keep a concise manual walkthrough (text only) for the interaction and responsive-layout scenarios that automated tests cannot sufficiently demonstrate.
+Done — the product owner has assessed the acceptance criteria, accepted the ticket, and authorized finalization. (Owner-managed.)
 
-## Targeted context loading for future tasks
+If the project board has no Blocked option, keep the ticket In Progress and represent the blocker through the issue's active-blocker section. Do not invent a board state or alter board configuration without authorization.
 
-Before starting a task, load only the authoritative sources needed for its scope:
+Acceptance versus technical-checklist ownership
 
-1. `PROJECT_PLAN.md` — scope and the specific ticket's acceptance criteria and technical plan.
-2. The ticket's GitHub issue — live checklist, evidence, and active blockers.
-3. `docs/development-workflow.md` — this document.
-4. `docs/architecture.md`, `docs/domain-model.md`, `docs/input-pipeline.md` — boundaries and validation invariants for the area being changed.
-5. `README.md` — local setup, migrations, seed, and test commands.
-6. `docs/blockers/` and `docs/engineering-log.md` — any active blocker or relevant deviation for the milestone.
-7. `tests/helpers/test-db.js` — confirm test-database isolation and serialized execution; confirm no competing DB-backed processes are running against the same test database.
-8. Confirm the current branch and `HEAD` before implementing.
+The GitHub issue is the authoritative live ticket record. PROJECT_PLAN.md provides milestone context and intended scope but does not mirror live progress.
+
+Cline maintains only the Technical plan and progress checkboxes, checking an item only when supporting repository evidence has been committed and pushed.
+
+The product owner alone checks acceptance-criteria boxes and accepts tickets.
+
+Cline never moves a ticket to Done, closes an issue, or closes a milestone unless explicitly instructed after acceptance.
+
+Ticket execution sequence
+
+Process a ticket in this order:
+
+Inspect the ticket and relevant repository state.
+
+After explicit authorization to begin, move the ticket to In Progress.
+
+Implement locally on the milestone branch (for example, feature/m1); do not commit directly to main or develop.
+
+Verify in the appropriate order: focused tests → related tests → complete serial suite (npm test) → clean-migration verification when persistence or migrations are affected.
+
+Commit using a focused commit and a concise imperative subject consistent with repository style.
+
+Push to the milestone feature branch.
+
+Update the live Technical plan and progress checklist using pushed evidence. Record relevant files, commit SHAs, verification results, decisions, and blockers in the GitHub issue.
+
+When every technical-plan item is supported and required verification passes, move the ticket to Ready for Acceptance and provide a concise acceptance handoff.
+
+Stop and wait for the product owner's acceptance decision.
+
+Move the ticket to Done or close it only after explicit acceptance and instruction.
+
+Do not use local, uncommitted, or unpushed work as remote acceptance evidence.
+
+Test diagnosis, failure classification, and reruns
+
+Diagnose the smallest reproducible failure first.
+
+Capture the exact failure and establish which operation or assertion actually fails before proposing a correction.
+
+Classify the failure before changing code. Relevant classifications include:
+
+production defect;
+
+test defect;
+
+fixture defect;
+
+environment failure;
+
+concurrency or shared-state interference;
+
+stale expectation.
+
+When the application is wrong, correct production behavior before changing tests.
+
+Change a fixture or expectation only when it is demonstrably incorrect.
+
+Keep each test focused on one primary behavior. Split tests whose setup or assertions independently attempt to prove unrelated responsibilities.
+
+After a correction, rerun in this order:
+
+focused test;
+
+related test file or suite;
+
+complete serial suite;
+
+clean-migration verification when persistence or migrations are affected.
+
+Expected failure-path tests may capture or stub their own expected logging. Do not suppress production logging globally merely to make test output quiet.
+
+Test execution and database isolation
+
+npm test runs node --test --test-concurrency=1.
+
+DB-backed tests run as one process with serialized execution.
+
+Tests use the dedicated pantry_test database through TEST_DATABASE_URL, never the development database through DATABASE_URL.
+
+tests/helpers/test-db.js protects this separation, prepares and migrates the test database, and resets shared tables for tests.
+
+Never run competing DB-backed test commands or diagnostic processes against the same test database.
+
+A failure observed while multiple processes share and reset one database must be reproduced with the supported single-process execution strategy before it is classified as a product defect.
+
+Blocker lifecycle
+
+A failing test is not automatically an official blocker. Treat a problem as an official blocker when it prevents meaningful implementation, required verification, workflow progression, or release readiness and requires tracked resolution.
+
+When blocked:
+
+Use the board's Blocked state if it exists. Otherwise keep the ticket In Progress.
+
+Add an active-blocker section to the GitHub issue containing observed symptoms, affected workflow steps, known evidence, and the next diagnostic or resolution action.
+
+Diagnose and resolve the blocker before claiming completion of affected technical work.
+
+Do not commit, push, or synchronize incomplete ticket work merely to advance the workflow unless the product owner explicitly authorizes an intermediate diagnostic commit.
+
+After resolution:
+
+Verify the resolution through the relevant focused, related, full-suite, and migration checks.
+
+Create a blocker-resolution document under docs/blockers/ using:
+
+YYYY-MM-DD-ticket-N-short-description.md
+
+Record the related ticket and milestone, dates encountered and resolved, context, symptoms, impact, diagnostic evidence, confirmed root cause, resolution, verification, recurrence indicators, recovery guidance, and related commits or files.
+
+Never invent a root cause or include secrets, sensitive configuration, or excessive raw logs.
+
+Commit and push the blocker document.
+
+Replace the issue's active-blocker section with a concise resolved summary containing the dates, confirmed cause, resolution, verification result, and a link to the blocker document.
+
+If the ticket was moved to Blocked, return it to In Progress only after the resolution has been verified, then continue the remaining ticket work.
+
+Examples:
+
+docs/blockers/2026-08-18-ticket-1.5-migration-chain-source-batch-id.md
+
+docs/blockers/2026-08-19-ticket-1.7-bigint-identifier-type-consistency.md
+
+Release and Gitflow responsibilities
+
+Each milestone is treated as a release.
+
+Pantry release tags follow Semantic Versioning as vMAJOR.MINOR.PATCH.
+
+During pre-1.0 development, each completed milestone release increments the minor version; corrective non-milestone releases increment the patch version; prerelease candidates may use suffixes such as -rc.1.
+
+Tags must be annotated, must point to the approved released commit, and must never be reused or moved after publication.
+
+Release preparation begins only after every milestone ticket has been accepted and moved to Done and the product owner explicitly authorizes release preparation.
+
+Before merging, tagging, publishing a release, changing versions, closing a milestone, or creating the next milestone branch, Cline presents the proposed version, included tickets, test evidence, release commit message, and release notes for explicit product-owner approval.
+
+Cline must not merge into main or develop, create a tag, publish a GitHub Release, close a milestone, or begin the next milestone without explicit authorization.
+
+Authorized release sequence:
+
+Complete and accept every milestone ticket.
+
+Receive explicit authorization to prepare the release.
+
+Verify milestone tickets, repository state, tests, documentation, and proposed version.
+
+Prepare and present the functional release summary, included-ticket list, verification evidence, changelog, release commit message, tag, and GitHub Release materials.
+
+Receive explicit approval for the release package.
+
+Merge the approved release into main with an explicit merge commit.
+
+Create the annotated version tag from the approved release state.
+
+Merge the release back into develop.
+
+Publish the GitHub Release using the approved notes.
+
+Close the milestone only after explicit product-owner approval.
+
+Create or begin the next milestone branch only after authorization.
+
+Evidence requirements
+
+Evidence is text-based; screenshots are not required acceptance evidence.
+
+Primary evidence consists of implementation, automated tests, the migration chain applied in order, and persisted database behavior.
+
+Record the tested branch and commit, relevant environment, commands or scenarios exercised, and pass/fail results.
+
+Keep concise manual walkthrough evidence only for interaction, accessibility, browser behavior, and responsive-layout outcomes that automated tests cannot sufficiently establish.
+
+Manual evidence should state the tested branch/commit, browser or environment, approximate viewport where relevant, scenarios, and results. Screenshots are optional and must never substitute for behavioral evidence.
+
+Issue evidence should remain concise and link to repository documentation for detailed blocker or engineering records.
+
+Targeted context loading for future tasks
+
+The goal is to understand the active work without rereading the entire project history.
+
+Always load
+
+docs/development-workflow.md in full.
+
+The active GitHub issue in full, including its acceptance criteria, technical checklist, evidence, and blocker state.
+
+The current branch, HEAD, remote relationship, and working-tree state.
+
+Code and tests directly relevant to the active ticket.
+
+Load only when relevant
+
+PROJECT_PLAN.md — milestone context, ticket relationships, scope ambiguity, or a suspected mismatch with the live issue.
+
+docs/architecture.md — when architecture, layer boundaries, dependencies, persistence, testing strategy, or release constraints are affected.
+
+docs/domain-model.md — when entities, controlled values, lifecycle, persistence semantics, or validation invariants are affected.
+
+docs/input-pipeline.md and docs/analyzer-contract.md — for intake adapters, analyzer proposals, validation boundaries, or provider-related work.
+
+README.md — for setup, environment, Compose, migration, seed, health-check, or command changes.
+
+Relevant files under docs/blockers/ — only for an active blocker, a plausible recurrence, or a directly related resolved incident.
+
+docs/engineering-log.md — only when investigating a documented deviation or when the current ticket requires an implementation-history record.
+
+tests/helpers/test-db.js — for DB-backed implementation, migration work, database-test diagnosis, or changes to test execution.
+
+Do not load every conditional source by default. Do not produce a broad repository or project-history summary unless requested. Before implementing, report only the understood objective, relevant boundaries, evidence inspected, unresolved conflicts or decisions, and the next workflow-correct action.
