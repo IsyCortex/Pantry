@@ -19,6 +19,7 @@ No AI-generated proposal becomes inventory without explicit human confirmation.
 | Document | Purpose |
 | --- | --- |
 | [Project plan](PROJECT_PLAN.md) | Milestones, tickets, acceptance criteria, and technical progress checklists |
+| [Development workflow](docs/development-workflow.md) | Operational workflow: ownership, ticket and blocker lifecycles, technical-checklist ownership, testing, Gitflow, evidence, and context loading |
 | [Product scope](docs/product-scope.md) | Product goal, users, workflows, MVP boundary, success criteria, and scope acceptance |
 | [Domain model](docs/domain-model.md) | Domain language, entities, lifecycle rules, and validation invariants |
 | [Architecture](docs/architecture.md) | Application structure, technical boundaries, persistence, testing strategy, and release workflow constraints |
@@ -39,12 +40,12 @@ Architectural decisions that require trade-off records are maintained as individ
 
 ## Delivery workflow
 
-- Ticket execution follows the technical ticket-state workflow documented in the [project plan](PROJECT_PLAN.md#ticket-workflow-states).
+- Ticket execution follows the operational workflow documented in [`docs/development-workflow.md`](docs/development-workflow.md#ticket-workflow-states).
 - The GitHub issue is the authoritative live technical checklist; technical items are updated only after implementation evidence is committed and pushed.
 - The implementation partner maintains only `Technical plan and progress` checkboxes and never checks acceptance criteria without explicit instruction.
-- Formally tracked blockers follow the blocker lifecycle documented in the [project plan](PROJECT_PLAN.md#blocker-lifecycle), with detailed incident records stored under `docs/blockers/`.
+- Formally tracked blockers follow the blocker lifecycle documented in [`docs/development-workflow.md`](docs/development-workflow.md#blocker-lifecycle), with detailed incident records stored under `docs/blockers/`.
 - Product acceptance and movement to `Done` remain the project owner's responsibility.
-- Each milestone is treated as a release and follows the Gitflow release responsibilities documented in the [project plan](PROJECT_PLAN.md#release-and-gitflow-responsibilities).
+- Each milestone is treated as a release and follows the Gitflow release responsibilities documented in [`docs/development-workflow.md`](docs/development-workflow.md#release-and-gitflow-responsibilities).
 
 ## Current status
 
