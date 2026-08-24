@@ -4,7 +4,7 @@
 
 Human-owned acceptance testing of Milestone 1 (Tickets 1.1–1.6) through the browser, as defined by the working method in `PROJECT_PLAN.md`: acceptance remains product-owner-owned. This document only prepares that test; it does not replace the acceptance-criteria checklists in the GitHub issues.
 
-Repository state under test: branch `feature/m1`, commit `637a73e`, clean working tree.
+Repository state under test: branch `feature/m1`, commit `637a73e`, clean working tree. The two commits between `637a73e` and the final M1 HEAD (`99853ca`) were documentation-only, so the tested application behavior and recorded 61/61 suite remain valid at the final HEAD.
 
 ## 2. Environment setup
 
@@ -152,7 +152,7 @@ Manual entry bypasses review; the review step belongs to provider (AI) input and
 - Acceptance evidence is text only — no screenshots are required. Primary evidence is: the implementation, the automated-test suite, a clean migration chain applied in order, and persisted database behavior.
 - Record, as text, the tested branch/commit, environment, scenarios exercised, and pass/fail result for each.
 - Keep a concise manual walkthrough for the interaction and responsive-layout scenarios automated tests cannot fully cover (notably Enter-key advance and S9 narrow-width layout); those remain product-owner-owned acceptance steps.
-- State under test: branch `feature/m1` at commit `637a73e`.
+- State under test: branch `feature/m1` at commit `637a73e`. Walkthrough remains valid for the final M1 HEAD `99853c` (only documentation commits followed `637a73e`).
 
 ### M1 manual walkthrough (text evidence)
 
@@ -164,6 +164,7 @@ Manual entry bypasses review; the review step belongs to provider (AI) input and
   - S9 / Enter-key advance: markup-level Enter-key advancement for the manual batch editor is covered by `manual batch editor markup provides deterministic Enter-key advancement handling`; narrow-width responsive layout is a product-owner browser acceptance step (deferred; no defect found).
 - Automated suite: `node --test --test-concurrency=1` → 61/61 pass, 0 fail.
 - Result: no application changes required beyond the committed expiration-date render fix.
+- M1 completion re-verification (final release-readiness review): final `feature/m1` HEAD `99853ca`; complete serial suite `npm test` → 61/61 pass, 0 fail; walkthrough remains valid because only documentation commits followed the tested `637a73e`.
 
 
 
