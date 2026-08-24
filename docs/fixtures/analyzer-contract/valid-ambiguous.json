@@ -4,7 +4,7 @@
       "name": "milk",
       "quantity": 2,
       "unit": "package",
-      "location": "fridge",
+      "location": null,
       "expirationDate": null,
       "dateType": null
     },
@@ -12,7 +12,7 @@
       "name": "rice",
       "quantity": null,
       "unit": null,
-      "location": "pantry",
+      "location": null,
       "expirationDate": null,
       "dateType": null
     },

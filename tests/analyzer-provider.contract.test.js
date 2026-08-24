@@ -88,7 +88,10 @@ test('fake provider covers ambiguous input by keeping values null', async () => 
 
   assert.equal(result.items.length, 3);
   // Ambiguous quantities and locations stay null rather than being invented.
+  assert.equal(result.items[0].name, 'milk');
+  assert.equal(result.items[0].location, null);
   assert.equal(result.items[1].name, 'rice');
+  assert.equal(result.items[1].location, null);
   assert.equal(result.items[1].quantity, null);
   assert.equal(result.items[2].name, 'frozen peas');
   assert.equal(result.items[2].location, null);
