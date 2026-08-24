@@ -1,78 +1,73 @@
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const { assertAnalyzerInput, assertAnalyzerProposal } = require('../validation/analyzer-contract');
 
-// Deterministic fake analyzer provider.
-//
-// For every known input this provider returns the same proposal regardless of
-// how many times it is called, and it never performs I/O beyond reading the
-// application-owned fixture files once at construction time. It satisfies the
-// analyzer-contract ask:
-//   - produces deterministic multi-item proposals;
-//   - representative fixtures cover explicit values, missing values, ambiguity,
-//     and grouped locations;
-//   - automated tests require no live model or network service;
-//   - output has the same canonical proposal-item shape the local provider
-//     (Ticket 2.4) will produce, and which Ticket 2.3 will validate.
-//
-// The analyzer-contract input schema is `{ rawText, referenceDate, timezone,
-// locale }`. The fake provider resolves deterministically from `rawText` (the
-// untrusted user input); the application-owned context fields are accepted and
-// ignored by the fake, exactly as they would be by a provider that does not
-// need them for fixture lookup.
+const NUMBER_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5 };
+const LOCATION_PATTERN = /\b(pantry|fridge|freezer)\b/i;
+const DATE_PATTERN = /\b(best before|use by)\s+(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\b/i;
+const MONTHS = { january: 0, february: 1, march: 2, april: 3, may: 4, june: 5, july: 6, august: 7, september: 8, october: 9, november: 10, december: 11 };
+const KNOWN_FOODS = new Set(['milk', 'rice', 'frozen peas', 'peas', 'eggs', 'flour', 'apples', 'pears']);
 
-const FIXTURES_DIR = path.resolve(__dirname, '..', '..', 'docs', 'fixtures', 'analyzer-contract');
+function numberValue(value) { return NUMBER_WORDS[value.toLowerCase()] || Number(value); }
 
-// Deterministic input-key -> fixture filename resolution. Kept explicit so the
-// provider is predictable for tests and review.
-const INPUT_FIXTURE_MAP = {
-  'Fridge: two cartons of milk best before 20 August. Pantry: one bag of rice.':
-    'valid-grouped-locations.json',
-  'two cartons of milk': 'valid-basic.json',
-  'one bag of rice': 'valid-missing-values.json',
-  'three things. Two cartons of milk and maybe some rice, a bit of frozen peas.':
-    'valid-ambiguous.json'
-};
+function emptyItem(name, location = null) {
+  return { name, quantity: null, unit: null, location, expirationDate: null, dateType: null };
+}
 
-function loadFixture(filename) {
-  const raw = fs.readFileSync(path.join(FIXTURES_DIR, filename), 'utf8');
-  return JSON.parse(raw).items;
+function parseDate(text, referenceDate) {
+  const match = text.match(DATE_PATTERN);
+  if (!match) return { expirationDate: null, dateType: null };
+  const month = MONTHS[match[3].toLowerCase()];
+  const day = Number(match[2]);
+  const reference = new Date(`${referenceDate}T00:00:00Z`);
+  let year = reference.getUTCFullYear();
+  if (month < reference.getUTCMonth() || (month === reference.getUTCMonth() && day < reference.getUTCDate())) year += 1;
+  return { expirationDate: `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`, dateType: match[1].toLowerCase() === 'use by' ? 'use_by' : 'best_before' };
+}
+
+function parseSegment(segment, inheritedLocation, referenceDate) {
+  const locationMatch = segment.match(LOCATION_PATTERN);
+  const location = locationMatch ? locationMatch[1].toLowerCase() : inheritedLocation;
+  const date = parseDate(segment, referenceDate);
+  const cleaned = segment.replace(LOCATION_PATTERN, '').replace(DATE_PATTERN, '').replace(/[.!]/g, '').trim();
+  const itemPattern = /(?:(one|two|three|four|five|\d+(?:\.\d+)?)\s+)?(?:(cartons?|bags?|boxes?|bottles?|packages?|packs?)\s+of\s+)?([a-z][a-z -]*?)(?=\s+and\s+|,|$)/gi;
+  const items = [];
+  let match;
+  while ((match = itemPattern.exec(cleaned))) {
+    let name = match[3].trim().replace(/\s+$/, '').replace(/^(?:and\s+)?(?:maybe some|a bit of|some)\s+/i, '');
+    if (!name || /^(?:things?|items?)$/i.test(name) || !KNOWN_FOODS.has(name.toLowerCase())) continue;
+    const item = emptyItem(name.toLowerCase(), location);
+    if (match[1] && !/^(?:maybe some|a bit of|some)/i.test(match[0])) {
+      item.quantity = numberValue(match[1]);
+      item.unit = match[2] ? 'package' : null;
+    }
+    if (/^(?:maybe some|a bit of)/i.test(match[0])) { item.quantity = null; item.unit = null; }
+    if (items.length === 0 && date.expirationDate) Object.assign(item, date);
+    items.push(item);
+  }
+  return items;
+}
+
+function parseRawText(input) {
+  const segments = input.rawText.split(/\.(?=\s|$)/).map((part) => part.trim()).filter(Boolean);
+  let location = null;
+  return segments.flatMap((segment) => {
+    const locationMatch = segment.match(LOCATION_PATTERN);
+    if (locationMatch) location = locationMatch[1].toLowerCase();
+    return parseSegment(segment, location, input.referenceDate);
+  });
 }
 
 function createFakeAnalyzerProvider() {
-  const fixtureCache = {};
-  for (const filename of new Set(Object.values(INPUT_FIXTURE_MAP))) {
-    fixtureCache[filename] = loadFixture(filename);
-  }
-
   return {
     name: 'fake',
-
-    /**
-     * Analyze a grocery description and return a deterministic proposal.
-     *
-     * @param {object} input
-     * @param {string} input.rawText
-     * @param {string} [input.referenceDate]
-     * @param {string} [input.timezone]
-     * @param {string} [input.locale]
-     * @returns {Promise<{items: Array}>}
-     */
     async analyze(input) {
-      if (!input || typeof input.rawText !== 'string') {
-        throw new Error('FAKE_PROVIDER_INVALID_INPUT: rawText must be a string');
-      }
-
-      const filename = INPUT_FIXTURE_MAP[input.rawText];
-      if (!filename) {
-        throw new Error('FAKE_PROVIDER_UNCHARTED: no deterministic fixture for this input');
-      }
-
-      // Return a deep copy so callers can never mutate the shared fixture.
-      return { items: JSON.parse(JSON.stringify(fixtureCache[filename])) };
+      assertAnalyzerInput(input);
+      const output = { items: parseRawText(input) };
+      assertAnalyzerProposal(output);
+      return JSON.parse(JSON.stringify(output));
     }
   };
 }
 
-module.exports = { createFakeAnalyzerProvider, INPUT_FIXTURE_MAP };
+module.exports = { createFakeAnalyzerProvider, parseRawText };

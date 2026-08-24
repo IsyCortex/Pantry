@@ -15,9 +15,22 @@
 //     -> Promise<{ items: ProposalItem[] }>
 //
 // Where ProposalItem matches the analyzer-contract proposal item schema.
-// Application-owned structural validation of provider output is a Ticket 2.3
-// enforcement concern; this contract shape is the stable boundary both the fake
-// and any live provider must satisfy.
+const {
+  assertAnalyzerInput,
+  assertAnalyzerProposal
+} = require('../validation/analyzer-contract');
+
+function wrapAnalyzerProvider(provider) {
+  return {
+    name: provider.name,
+    async analyze(input) {
+      assertAnalyzerInput(input);
+      const output = await provider.analyze(input);
+      assertAnalyzerProposal(output);
+      return output;
+    }
+  };
+}
 
 module.exports = {
   // Context object passed to each provider. Providers may expose configuration
@@ -49,9 +62,10 @@ module.exports = {
       // Lazy require keeps the fake's fixtures from loading when not needed and
       // avoids circular imports.
       const { createFakeAnalyzerProvider } = require('./fake-provider');
-      return createFakeAnalyzerProvider(options);
+      return wrapAnalyzerProvider(createFakeAnalyzerProvider(options));
     }
 
     throw new Error(`Unsupported ANALYZER_PROVIDER kind: ${kind}`);
   }
+  ,wrapAnalyzerProvider
 };

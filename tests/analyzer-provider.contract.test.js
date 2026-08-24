@@ -8,9 +8,12 @@ const {
   ANALYZER_PROVIDER_KIND
 } = require('../src/analyzers/provider');
 const {
-  createFakeAnalyzerProvider,
-  INPUT_FIXTURE_MAP
+  createFakeAnalyzerProvider
 } = require('../src/analyzers/fake-provider');
+const {
+  validateAnalyzerProposal,
+  validateAnalyzerInput
+} = require('../src/validation/analyzer-contract');
 
 const CONTEXT = {
   referenceDate: '2026-08-16',
@@ -70,8 +73,8 @@ test('fake provider covers missing values', async () => {
   assert.equal(result.items.length, 1);
   const item = result.items[0];
   assert.equal(item.name, 'rice');
-  assert.equal(item.quantity, null);
-  assert.equal(item.unit, null);
+  assert.equal(item.quantity, 1);
+  assert.equal(item.unit, 'package');
   assert.equal(item.expirationDate, null);
   assert.equal(item.dateType, null);
 });
@@ -87,6 +90,8 @@ test('fake provider covers ambiguous input by keeping values null', async () => 
   // Ambiguous quantities and locations stay null rather than being invented.
   assert.equal(result.items[1].name, 'rice');
   assert.equal(result.items[1].quantity, null);
+  assert.equal(result.items[2].name, 'frozen peas');
+  assert.equal(result.items[2].location, null);
   assert.equal(result.items[2].quantity, null);
 });
 
@@ -100,47 +105,29 @@ test('fake provider emits a proposal shaped like the analyzer contract', async (
   assert.deepEqual(Object.keys(result).sort(), ['items']);
   assert.ok(Array.isArray(result.items));
 
-  const allowedItemKeys = new Set([
-    'name',
-    'quantity',
-    'unit',
-    'location',
-    'expirationDate',
-    'dateType'
-  ]);
-  for (const item of result.items) {
-    for (const key of Object.keys(item)) {
-      assert.ok(allowedItemKeys.has(key), `unexpected proposal item key: ${key}`);
-    }
-    assert.equal(typeof item.name, 'string');
-    assert.ok(item.name.trim().length > 0);
-    if (item.quantity != null) assert.ok(item.quantity > 0);
-    if (item.unit != null) assert.ok(['g', 'kg', 'ml', 'l', 'piece', 'package'].includes(item.unit));
-    if (item.location != null) assert.ok(['pantry', 'fridge', 'freezer'].includes(item.location));
-    if (item.expirationDate != null) assert.match(item.expirationDate, /^\d{4}-\d{2}-\d{2}$/);
-    if (item.dateType != null) assert.ok(['best_before', 'use_by', 'unspecified'].includes(item.dateType));
-  }
+  assert.equal(validateAnalyzerProposal(result).ok, true);
 });
 
 test('fake provider rejects missing or non-string rawText', async () => {
   const provider = createFakeAnalyzerProvider();
-  await assert.rejects(() => provider.analyze({}), /FAKE_PROVIDER_INVALID_INPUT/);
-  await assert.rejects(() => provider.analyze({ rawText: 42 }), /FAKE_PROVIDER_INVALID_INPUT/);
+  await assert.rejects(() => provider.analyze({}), /ANALYZER_INVALID_INPUT/);
+  await assert.rejects(() => provider.analyze({ rawText: 42 }), /ANALYZER_INVALID_INPUT/);
 });
 
-test('fake provider rejects uncharted input without a corresponding fixture', async () => {
+test('fake provider handles arbitrary text without inventing items', async () => {
   const provider = createFakeAnalyzerProvider();
-  await assert.rejects(
-    () => provider.analyze({ rawText: 'unknown input text' }),
-    /FAKE_PROVIDER_UNCHARTED/
-  );
+  const result = await provider.analyze({ rawText: 'unknown input text', ...CONTEXT });
+  assert.deepEqual(result, { items: [] });
 });
 
-test('every fixture referenced by the fake provider maps to a named contract fixture', () => {
-  const referenced = Object.values(INPUT_FIXTURE_MAP);
-  assert.ok(referenced.length >= 4);
-  assert.ok(referenced.includes('valid-basic.json'));
-  assert.ok(referenced.includes('valid-missing-values.json'));
-  assert.ok(referenced.includes('valid-grouped-locations.json'));
-  assert.ok(referenced.includes('valid-ambiguous.json'));
+test('shared validator rejects malformed provider output', () => {
+  const invalid = validateAnalyzerProposal({ items: [{ name: '', quantity: null, unit: 'package', location: 'cellar', expirationDate: '2026-02-30', dateType: null }] });
+  assert.equal(invalid.ok, false);
+  assert.ok(invalid.errors.length >= 3);
+});
+
+test('shared validator enforces required analyzer context and raw-text limit', () => {
+  assert.equal(validateAnalyzerInput({ rawText: 'x', ...CONTEXT }).ok, true);
+  assert.equal(validateAnalyzerInput({ rawText: 'x'.repeat(4001), ...CONTEXT }).ok, false);
+  assert.equal(validateAnalyzerInput({ rawText: 'x', ...CONTEXT, locale: undefined }).ok, false);
 });

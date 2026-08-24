@@ -17,10 +17,10 @@
       "dateType": null
     },
     {
-      "name": "eggs",
+      "name": "frozen peas",
       "quantity": null,
       "unit": null,
-      "location": "fridge",
+      "location": null,
       "expirationDate": null,
       "dateType": null
     }
