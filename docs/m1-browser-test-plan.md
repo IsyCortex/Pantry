@@ -4,7 +4,7 @@
 
 Human-owned acceptance testing of Milestone 1 (Tickets 1.1–1.6) through the browser, as defined by the working method in `PROJECT_PLAN.md`: acceptance remains product-owner-owned. This document only prepares that test; it does not replace the acceptance-criteria checklists in the GitHub issues.
 
-Repository state under test: branch `feature/m1`, commit `f7bae74`, clean working tree.
+Repository state under test: branch `feature/m1`, commit `637a73e`, clean working tree.
 
 ## 2. Environment setup
 
@@ -149,8 +149,21 @@ Manual entry bypasses review; the review step belongs to provider (AI) input and
 ## 8. Recording results
 
 - Work through the ticket 1.2–1.6 issue checklists in order S1 → S10.
-- Collect one screenshot per scenario plus short notes as acceptance evidence.
-- State under test: branch `feature/m1` at commit `f7bae74`.
+- Acceptance evidence is text only — no screenshots are required. Primary evidence is: the implementation, the automated-test suite, a clean migration chain applied in order, and persisted database behavior.
+- Record, as text, the tested branch/commit, environment, scenarios exercised, and pass/fail result for each.
+- Keep a concise manual walkthrough for the interaction and responsive-layout scenarios automated tests cannot fully cover (notably Enter-key advance and S9 narrow-width layout); those remain product-owner-owned acceptance steps.
+- State under test: branch `feature/m1` at commit `637a73e`.
+
+### M1 manual walkthrough (text evidence)
+
+- Branch/commit: `feature/m1` @ `637a73e` (post expiration-date render fix; clean working tree).
+- Environment: repository PostgreSQL via `docker compose` (host port `15432`); app served by `npm start` at `http://127.0.0.1:3000`. Evidence for this pass is from `npm test` and the committed regression test; the dev server was not running in the non-interactive environment, so the edit-form rendering is locked by the regression test (the prior live check observed `value="2026-09-05"`).
+- Scenarios exercised — results (no defects):
+  - S7 — Edit form: `GET /inventory/:id/edit` renders the expiration input with a parseable `YYYY-MM-DD` value and the correct date-type option pre-selected — asserted by the committed regression test `/value="2026-08-20"/` and `/value="best_before" selected>/` (`tests/inventory.route.test.js`). The POST round-trip returns `302` to `/inventory?notice=updated` ("Inventory item updated successfully.") and the item is unchanged on re-edit — asserted by `POST /inventory/:id/edit shows a success notice and the global navigation`. Invalid updates (blank name) return `400` with validation errors and preserved entered values — asserted by `POST /inventory/:id/edit preserves submitted values when validation fails`.
+  - S10 — Error states: `GET /inventory/999/edit` returns `404` "Inventory item not found" (no internals), and a database outage on `GET /inventory` renders "Inventory could not be loaded right now." with no stack trace — asserted by `retrieval failure produces a safe error page`.
+  - S9 / Enter-key advance: markup-level Enter-key advancement for the manual batch editor is covered by `manual batch editor markup provides deterministic Enter-key advancement handling`; narrow-width responsive layout is a product-owner browser acceptance step (deferred; no defect found).
+- Automated suite: `node --test --test-concurrency=1` → 61/61 pass, 0 fail.
+- Result: no application changes required beyond the committed expiration-date render fix.
 
 
 

@@ -634,7 +634,7 @@
 - [ ] Finalize architecture documentation
 - [ ] Complete ADR set
 - [ ] Create seed/demo scenario
-- [ ] Add screenshots or concise walkthrough
+- [ ] Add a concise walkthrough (text only)
 - [ ] Finalize testing documentation
 - [ ] Finalize engineering log
 - [ ] Perform tracked-secret and machine-specific configuration review
