@@ -76,8 +76,8 @@ const SCENARIOS = [
   { id: 'S13', title: 'minimal input', text: 'milk' },
   { id: 'S14', title: 'boundary acceptance (exactly 4000 chars)', text: S14_TEXT },
   { id: 'S15', title: 'over-limit rejection before provider (4001 chars) — Ticket 2.3 regression, not scored', text: S15_TEXT },
-  { id: 'S16', title: 'Ticket 2.4 owner regression: bare multi-item list', text: 'wine, beer, frozen pizza, minced meat' },
-  { id: 'S17', title: 'Ticket 2.4 owner regression: list with fridge + dates phrasing', text: 'eggs, milk, and feta in the fridge with relative and explicit dates' }
+  { id: 'S16', title: 'Ticket 2.4 owner regression (restored verbatim): purchased wine/beer/frozen pizza/minced meat', text: 'I purchased 1 bottle of wine, 8 cans of beer, 1 frozen pizza and 500g of minced meat.' },
+  { id: 'S17', title: 'Ticket 2.4 owner regression (restored verbatim): fridge inventory with relative and explicit dates', text: 'In my fridge, I have 5 eggs that should keep another 5 days, half a liter of milk that says use by August 26th and a 250g block of feta that will keep another 3 weeks.' }
 ];
 
 // Normalizes a DATE column value to a YYYY-MM-DD display string. pg returns

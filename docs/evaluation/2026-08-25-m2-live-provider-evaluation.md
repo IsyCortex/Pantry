@@ -70,15 +70,16 @@ Out of scope / never changed:
 | S13 | `milk` | review batch | 1 item `milk`, all other fields `null` |
 | S14 | 4000-char description (exactly at the supported boundary) | review batch | large item count captured (≤ 50); recorded extraction count, no truncation crash |
 | S15 | 4001-char description (one character above) | **Ticket 2.3 regression check — not scored.** Safe 400 "too long" form, description preserved, no `Internal server error`, near-zero latency proving rejection before provider invocation | n/a |
-| S16 | `wine, beer, frozen pizza, minced meat` | review batch | exactly 4 items with those names; all other fields `null` — no invented quantities/units/locations/dates |
-| S17 | `eggs, milk, and feta in the fridge with relative and explicit dates` | review batch | 3 items with location `fridge`; **no invented dates** (the phrasing "with relative and explicit dates" must not trigger fabrication) |
+| S16 | `I purchased 1 bottle of wine, 8 cans of beer, 1 frozen pizza and 500g of minced meat.` | review batch | wine qty 1; beer qty 8; frozen pizza qty 1; minced meat qty 500 unit `g`; no unsupported units (`bottle`/`can`) emitted; no inferred storage locations |
+| S17 | `In my fridge, I have 5 eggs that should keep another 5 days, half a liter of milk that says use by August 26th and a 250g block of feta that will keep another 3 weeks.` | review batch | 3 items with location `fridge`; eggs qty 5; milk qty 0.5 unit `l` `use_by` 2026-08-26; feta qty 250 unit `g`; durability phrases ("keep another 5 days/3 weeks") must not fabricate expiration dates |
 
 Notes:
 
 - `referenceDate` is the run-date in the configured timezone; relative-date
   expectations (S2, S8) are evaluated against the recorded `referenceDate`.
-- Expected outcomes are the product-owner-approved scenario set (Ticket 2.4
-  owner regressions S16/S17 added verbatim as provided).
+- Expected outcomes are the product-owner-approved scenario set. S16/S17 are the
+  owner-tested Ticket 2.4 prompts, restored **verbatim** from the persisted
+  review batches (dev-DB `intake_batches` ids 9/10).
 
 ## Results
 
