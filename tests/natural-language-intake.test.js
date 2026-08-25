@@ -83,6 +83,10 @@ test('a valid multi-item proposal creates an editable pending-review batch and n
     const reviewBody = await review.text();
     assert.match(reviewBody, /milk/);
     assert.match(reviewBody, /rice/);
+    // Owner acceptance feedback: the preserved description must be visible on
+    // the review page, not only stored in intake_batches.original_text.
+    assert.ok(reviewBody.includes('Original description'));
+    assert.ok(reviewBody.includes('Fridge: two cartons of milk best before 20 September 2026. Rice.'));
   });
 
   const batch = (
@@ -114,6 +118,18 @@ test('the application supplies reference date, timezone, and locale to the provi
   assert.match(input.referenceDate, /^\d{4}-\d{2}-\d{2}$/);
   assert.ok(typeof input.timezone === 'string' && input.timezone.length > 0);
   assert.ok(typeof input.locale === 'string' && input.locale.length > 0);
+
+  // Independent recomputation: the reference date must equal the calendar
+  // date of the submission instant inside the reported timezone — never a
+  // UTC-derived date that drifts around local midnight (owner acceptance
+  // feedback).
+  const expectedReferenceDate = new Intl.DateTimeFormat('en-CA', {
+    timeZone: input.timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
+  assert.equal(input.referenceDate, expectedReferenceDate);
 });
 
 test('a provider failure preserves the submitted text, hides provider details, and allows retry', async () => {
@@ -268,4 +284,30 @@ test('confirming the reviewed proposal moves only included rows into inventory',
     assert.equal(batch.state, 'confirmed');
     assert.equal(batch.source_type, 'natural_language');
   });
+});
+
+// Owner acceptance feedback: referenceDate must be the calendar date inside
+// the reported timezone, so date and timezone can never disagree near local
+// midnight.
+test('referenceDate is derived inside the configured timezone, not UTC', () => {
+  const { calendarDateInZone, buildAnalyzerInput } = require('../src/services/natural-language-intake-service');
+
+  const justBeforeUtcMidnight = new Date('2026-08-24T23:30:00Z');
+  assert.equal(calendarDateInZone(justBeforeUtcMidnight, 'Europe/Berlin'), '2026-08-25');
+  assert.equal(calendarDateInZone(justBeforeUtcMidnight, 'Pacific/Honolulu'), '2026-08-24');
+  assert.equal(calendarDateInZone(justBeforeUtcMidnight, 'UTC'), '2026-08-24');
+
+  const context = buildAnalyzerInput('Milk.');
+  assert.equal(context.rawText, 'Milk.');
+  assert.equal(context.locale, 'en-US');
+
+  // Independent recomputation, not via the service helper.
+  const expected = new Intl.DateTimeFormat('en-CA', {
+    timeZone: context.timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
+  assert.equal(context.timezone, process.env.ANALYZER_TIMEZONE || 'UTC');
+  assert.equal(context.referenceDate, expected);
 });

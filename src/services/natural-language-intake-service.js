@@ -4,6 +4,7 @@
 // confirmation stays inside the shared review workflow (ADR-0002).
 
 const pool = require('../db/pool');
+const config = require('../config');
 const {
   createNaturalLanguageIntakeBatch,
   replaceDraftBatchItems,
@@ -33,17 +34,27 @@ function createNoItemsFoundError() {
 
 // The application owns analyzer context (docs/input-pipeline.md): providers
 // never infer date, timezone, or locale themselves.
+//
+// The timezone comes from configuration (ANALYZER_TIMEZONE, default UTC) and
+// the reference date is derived as the calendar date *inside that timezone*,
+// so the two can never disagree around local midnight — a naive UTC date
+// slice would report the previous day there.
+function calendarDateInZone(date, timezone) {
+  // en-CA formats as YYYY-MM-DD, matching the contract's ISO date requirement.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(date);
+}
+
 function buildAnalyzerInput(rawText, now = new Date()) {
-  let timezone = 'UTC';
-  try {
-    timezone = new Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  } catch (error) {
-    timezone = 'UTC';
-  }
+  const timezone = config.analyzerTimezone;
 
   return {
     rawText,
-    referenceDate: now.toISOString().slice(0, 10),
+    referenceDate: calendarDateInZone(now, timezone),
     timezone,
     locale: 'en-US'
   };
@@ -112,4 +123,4 @@ async function analyzeAndCreateReviewBatch({ rawText }, options = {}) {
   }
 }
 
-module.exports = { analyzeAndCreateReviewBatch };
+module.exports = { analyzeAndCreateReviewBatch, buildAnalyzerInput, calendarDateInZone };

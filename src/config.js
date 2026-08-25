@@ -13,5 +13,9 @@ module.exports = {
   // Provider selection for input analysis. `fake` is deterministic and offline,
   // suitable for development and automated tests. A local language-model provider
   // will be added behind the same contract in Ticket 2.4.
-  analyzerProvider: process.env.ANALYZER_PROVIDER || 'fake'
+  analyzerProvider: process.env.ANALYZER_PROVIDER || 'fake',
+  // IANA timezone the application reports to analyzers. The analyzer reference
+  // date is derived inside this zone, so the two values can never disagree
+  // around local midnight.
+  analyzerTimezone: process.env.ANALYZER_TIMEZONE || 'UTC'
 };

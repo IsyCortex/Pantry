@@ -267,12 +267,15 @@ function createIntakeBatchRouter(options = {}) {
         return;
       }
 
-      res.status(200).render('batch-review', createReviewLocals({
-        batchId: batch.id,
-        rows: batch.rows,
-        defaultLocation: '',
-        notice: req.query.notice === 'corrections_saved' ? 'Review corrections saved.' : null
-      }));
+      res.status(200).render('batch-review', {
+        ...createReviewLocals({
+          batchId: batch.id,
+          rows: batch.rows,
+          defaultLocation: '',
+          notice: req.query.notice === 'corrections_saved' ? 'Review corrections saved.' : null
+        }),
+        originalText: batch.originalText || ''
+      });
     } catch (error) {
       next(error);
     }

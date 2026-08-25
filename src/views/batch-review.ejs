@@ -7,6 +7,13 @@
       <h1><%= title %></h1>
       <p>Inspect the complete batch before later confirmation.</p>
 
+      <% if (typeof originalText !== 'undefined' && originalText) { %>
+        <section class="original-text">
+          <h2>Original description</h2>
+          <blockquote><%= originalText %></blockquote>
+        </section>
+      <% } %>
+
       <% if (errors.length > 0) { %>
         <section class="errors">
           <h2>Validation errors</h2>

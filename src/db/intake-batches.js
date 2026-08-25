@@ -39,7 +39,7 @@ async function replaceDraftBatchItems(batchId, rows, client = pool) {
 
 async function getDraftBatchById(batchId, client = pool) {
   const batchResult = await client.query(
-    `SELECT id, source_type, state, created_at, confirmed_at
+    `SELECT id, source_type, state, created_at, confirmed_at, original_text
      FROM intake_batches
      WHERE id = $1`,
     [batchId]
