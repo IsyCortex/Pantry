@@ -107,7 +107,7 @@ Evaluation run 2026-08-25 against `3ff6929` + the Ticket 2.5 harness; model `qwe
 | S14 | review batch | PASS | 4000-char input accepted; structure preserved to the 50-item cap; no truncation crash | PASS |
 | S15 | 400 safe form | PASS (regression) | 4001-char rejected in 2 ms — before provider invocation | n/a |
 | S16 | review batch | PASS | wine 1 / beer 8 → unit `piece`; minced meat 500 g, location `null` (no inference after refinement); `frozen pizza` → `pizza` (name degraded) with `freezer` still inferred | limitation |
-| S17 | review batch | PASS | eggs 5 `piece`, milk 0.5 l `use_by` 2026-08-26, feta 250 g (all `fridge`); "keeps for" durations resolve to dates (eggs +5d → 2026-08-30, feta +3w → 2026-09-16 this run; see L5 note on reported values) | PASS |
+| S17 | review batch | PASS | eggs 5 `piece` (+5d → 2026-08-30), milk 0.5 l `use_by` 2026-08-26 (explicit calendar date — exact across reruns), feta 250 g (+3w → 2026-09-16 this run vs 2026-09-15 last run — see L7); all `fridge`. Expected outcome (per owner): stated "keeps for"/"use by" relationships resolve from referenceDate 2026-08-25 and explicit calendar/use-by/best-before dates remain exact; a bare temporal phrase stays null (S9). | PASS |
 
 ### Structural axis (application verdict)
 
@@ -118,7 +118,7 @@ Evaluation run 2026-08-25 against `3ff6929` + the Ticket 2.5 harness; model `qwe
 ### Semantic axis (field diffs)
 
 - Strong: date resolution for stated relationships (S8), canonical unit forms (S12), large-batch extraction (S3 20/20), missing/blank values (S4, S6, S13), embedded-instruction defense (S11); verbatim S17 placed all items in the stated `fridge` and parsed quantities/units correctly (5 eggs, 0.5 l milk, 250 g feta); S9 now leaves ambiguous-temporal items dateless (L3 resolved).
-- Reproducible deviations: storage-location inference for stereotype-carrying names ("frozen peas"/"frozen pizza" → `freezer`, L1, accepted narrowly); name degradation (`frozen pizza` → `pizza`, L6, accepted). The earlier reported off-by-one-day dates were a harness conversion defect, not a model/storage/UI defect (see Investigation: L5); "keeps for" week-arithmetic varies ±1 day across runs (S17 feta 09-15 vs 09-16).
+- Reproducible deviations: storage-location inference for stereotype-carrying names ("frozen peas"/"frozen pizza" → `freezer`, L1, accepted narrowly); name degradation (`frozen pizza` → `pizza`, L6, accepted). The earlier reported off-by-one-day dates were a harness conversion defect, now removed (L5). Separately, approximate duration arithmetic ("keeps for", "+3 weeks") varies ±1 day across reruns (S17 feta 09-15 vs 09-16) — recorded as a narrowly accepted L7, distinct from L5.
 
 ### Injection and unsupported-inference findings
 
@@ -161,6 +161,7 @@ The L3 refinement (owner: not accepted as a limitation) added a conditional rela
 | L4 | Ambiguous numeric spans (`"2–3 apples"`) collapse to a single quantity (the domain cannot represent ranges). | **Accepted** — single value visible and correctable during review. |
 | L5 | "Date resolution one day early." | **Not accepted / removed.** Investigation found it was a harness reporting defect, not a model/storage/UI defect (see Investigation: L5 below). |
 | L6 | Item-name normalization (`frozen pizza` → `pizza`). | **Accepted** as a minor model-specific normalization limitation — grocery remains recognizable and correctable in review. |
+| L7 | Approximate duration phrases (`"keeps for"`, `"will last"`, `"lasts about"`) resolve from the reference date but vary ±1 day across runs (observed S17 feta +3 weeks: `2026-09-16` vs `2026-09-15`). | **Accepted narrowly (model-specific)** — approximate durations may vary ±1 day; **explicit calendar dates and explicitly-stated `use_by`/`best_before` dates must remain exact** (S17 milk "August 26th" → `2026-08-26` exact across reruns). This is a date-arithmetic accuracy note, distinct from the L5 harness reporting defect. |
 
 ## Investigation: L5 (off-by-one-day dates)
 
@@ -171,7 +172,7 @@ The reported one-day shift was investigated per the owner's instruction to compa
 - The review page (`GET /batches/30/review`) rendered the same `2026-08-30 / 2026-08-26 / 2026-09-15` values.
 - The harness's `toCalendarDate` used `Date.toISOString().slice(0,10)`, which converts to UTC: a DATE stored as `2026-08-30 00:00 CEST` is `2026-08-29 22:00 UTC`, so the harness reported the previous day for every dated item.
 
-**Conclusion:** the model emitted correct dates, PostgreSQL stored them correctly, and the UI displays them correctly. The off-by-one was a **reporting conversion bug in the evaluation harness**, fixed by rendering local date components (`getFullYear`/`getMonth`/`getDate`) instead of `toISOString`. L5 is removed. Residual observation only: multi-week "keeps for" arithmetic varies ±1 day across runs (S17 feta `2026-09-15` vs `2026-09-16`), which is model nondeterminism, not a correctness defect.
+**Conclusion:** the model emitted correct dates, PostgreSQL stored them correctly, and the UI displays them correctly. The off-by-one was a **reporting conversion bug in the evaluation harness**, fixed by rendering local date components (`getFullYear`/`getMonth`/`getDate`) instead of `toISOString`. L5 is removed (harness reporting defect, not a model/date-arithmetic property; see L7 for the separate date-arithmetic accuracy note).
 
 ## Evaluation-method limitations (transparency)
 
