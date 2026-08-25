@@ -11,6 +11,15 @@ const {
   updateBatchState
 } = require('../db/intake-batches');
 const { createAnalyzerProvider } = require('../analyzers/provider');
+const { MAX_RAW_TEXT_LENGTH } = require('../validation/analyzer-contract');
+
+// Canonical failure categories (Ticket 2.3): user-facing errors carry one of
+// these codes; raw provider errors never cross the service boundary.
+const ANALYSIS_ERROR_CODES = {
+  INVALID_RESPONSE: 'AI_INVALID_RESPONSE',
+  ANALYSIS_FAILED: 'AI_ANALYSIS_FAILED',
+  NO_ITEMS_FOUND: 'NO_ITEMS_FOUND'
+};
 
 function createAnalysisInputError(message) {
   const error = new Error(message);
@@ -18,18 +27,61 @@ function createAnalysisInputError(message) {
   return error;
 }
 
+function createInputTooLongError() {
+  const error = new Error(
+    `Your description is too long to analyze (maximum ${MAX_RAW_TEXT_LENGTH} characters). Shorten it and try again.`
+  );
+  error.code = 'ANALYSIS_INPUT_TOO_LONG';
+  return error;
+}
+
 function createAnalysisFailedError() {
   const error = new Error(
     'The analysis failed. Your description was preserved, so you can retry or continue manually.'
   );
-  error.code = 'ANALYSIS_FAILED';
+  error.code = ANALYSIS_ERROR_CODES.ANALYSIS_FAILED;
+  return error;
+}
+
+function createInvalidResponseError() {
+  const error = new Error(
+    'The analysis returned an unusable response. Your description was preserved, so you can retry or continue manually.'
+  );
+  error.code = ANALYSIS_ERROR_CODES.INVALID_RESPONSE;
   return error;
 }
 
 function createNoItemsFoundError() {
   const error = new Error('No grocery items were recognized in your description.');
-  error.code = 'NO_ITEMS_FOUND';
+  error.code = ANALYSIS_ERROR_CODES.NO_ITEMS_FOUND;
   return error;
+}
+
+// Maps a thrown provider/resolution failure to its safe category without
+// leaking provider details: unparseable responses (SyntaxError) and output
+// rejected by the shared contract validator are invalid responses; transport,
+// execution, resolution, and timeout failures are analysis failures.
+function classifyAnalysisFailure(error) {
+  if (error instanceof SyntaxError) {
+    return ANALYSIS_ERROR_CODES.INVALID_RESPONSE;
+  }
+  if (
+    typeof error.message === 'string' &&
+    error.message.startsWith('ANALYZER_INVALID_OUTPUT')
+  ) {
+    return ANALYSIS_ERROR_CODES.INVALID_RESPONSE;
+  }
+  return ANALYSIS_ERROR_CODES.ANALYSIS_FAILED;
+}
+
+// Enforces the contract's wall-clock budget per analysis call. Overruns reject
+// and are classified as ordinary analysis failures by the caller's catch.
+function withAnalysisTimeout(promise, timeoutMs) {
+  let timer;
+  const timeout = new Promise((resolve, reject) => {
+    timer = setTimeout(() => reject(new Error('ANALYSIS_TIMED_OUT')), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 // The application owns analyzer context (docs/input-pipeline.md): providers
@@ -82,6 +134,11 @@ async function analyzeAndCreateReviewBatch({ rawText }, options = {}) {
   if (!trimmedText) {
     throw createAnalysisInputError('Enter a grocery description to analyze.');
   }
+  // Contract input limit, enforced before any provider work so oversized
+  // submissions never reach the analyzer (Ticket 2.3 size limits).
+  if (trimmedText.length > MAX_RAW_TEXT_LENGTH) {
+    throw createInputTooLongError();
+  }
 
   // Provider resolution sits inside the same safe boundary as analysis: a
   // misconfigured or unavailable provider must degrade to the recoverable
@@ -93,8 +150,14 @@ async function analyzeAndCreateReviewBatch({ rawText }, options = {}) {
     provider =
       options.analyzerProvider ||
       createAnalyzerProvider({ kind: options.analyzerProviderKind || config.analyzerProvider });
-    proposal = await provider.analyze(buildAnalyzerInput(trimmedText));
+    proposal = await withAnalysisTimeout(
+      provider.analyze(buildAnalyzerInput(trimmedText)),
+      options.analysisTimeoutMs != null ? options.analysisTimeoutMs : config.analyzerTimeoutMs
+    );
   } catch (error) {
+    if (classifyAnalysisFailure(error) === ANALYSIS_ERROR_CODES.INVALID_RESPONSE) {
+      throw createInvalidResponseError();
+    }
     throw createAnalysisFailedError();
   }
 
@@ -127,4 +190,9 @@ async function analyzeAndCreateReviewBatch({ rawText }, options = {}) {
   }
 }
 
-module.exports = { analyzeAndCreateReviewBatch, buildAnalyzerInput, calendarDateInZone };
+module.exports = {
+  ANALYSIS_ERROR_CODES,
+  analyzeAndCreateReviewBatch,
+  buildAnalyzerInput,
+  calendarDateInZone
+};

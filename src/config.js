@@ -14,6 +14,9 @@ module.exports = {
   // suitable for development and automated tests. A local language-model provider
   // will be added behind the same contract in Ticket 2.4.
   analyzerProvider: process.env.ANALYZER_PROVIDER || 'fake',
+  // Wall-clock budget for a single analyzer call. Contract budget is 15s;
+  // overruns degrade to the recoverable analysis-failed state (Ticket 2.3).
+  analyzerTimeoutMs: Number(process.env.ANALYZER_TIMEOUT_MS || 15000),
   // IANA timezone the application reports to analyzers. The analyzer reference
   // date is derived inside this zone, so the two values can never disagree
   // around local midnight.

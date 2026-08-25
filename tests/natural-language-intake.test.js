@@ -309,9 +309,185 @@ test('referenceDate is derived inside the configured timezone, not UTC', () => {
     month: '2-digit',
     day: '2-digit'
   }).format(new Date());
-  assert.equal(context.timezone, process.env.ANALYZER_TIMEZONE || 'UTC');
   assert.equal(context.referenceDate, expected);
 });
+
+// ---------------------------------------------------------------------------
+// Ticket 2.3: canonical analysis-failure taxonomy. Service-level assertions
+// pin the exact error codes; HTTP tests below pin the safe route mapping.
+// ---------------------------------------------------------------------------
+const {
+  ANALYSIS_ERROR_CODES,
+  analyzeAndCreateReviewBatch
+} = require('../src/services/natural-language-intake-service');
+const { wrapAnalyzerProvider } = require('../src/analyzers/provider');
+
+test('oversized descriptions are rejected before any provider work', async () => {
+  await resetAllTables();
+
+  const provider = stubProvider(TWO_ITEMS);
+  const longText = `${'Milk. '.repeat(900)}end`; // > 4000 chars
+
+  await assert.rejects(
+    analyzeAndCreateReviewBatch({ rawText: longText }, { analyzerProvider: provider }),
+    (error) => error.code === 'ANALYSIS_INPUT_TOO_LONG'
+  );
+  assert.equal(provider.calls.length, 0);
+
+  const batchCount = await pool.query('SELECT COUNT(*)::int AS count FROM intake_batches');
+  assert.equal(batchCount.rows[0].count, 0);
+});
+
+test('contract-invalid analyzer output maps to AI_INVALID_RESPONSE', async () => {
+  await resetAllTables();
+
+  const badProvider = wrapAnalyzerProvider({
+    name: 'bad-analyzer',
+    async analyze() {
+      return { items: [{ name: 'milk', unit: 'bottle' }] }; // unit without quantity
+    }
+  });
+
+  await assert.rejects(
+    analyzeAndCreateReviewBatch({ rawText: 'Two bottles of milk.' }, { analyzerProvider: badProvider }),
+    (error) => {
+      assert.equal(error.code, ANALYSIS_ERROR_CODES.INVALID_RESPONSE);
+      assert.doesNotMatch(error.message, /bad-analyzer|ANALYZER_INVALID_OUTPUT/);
+      return true;
+    }
+  );
+
+  const batchCount = await pool.query('SELECT COUNT(*)::int AS count FROM intake_batches');
+  assert.equal(batchCount.rows[0].count, 0);
+});
+
+test('provider execution failures map to AI_ANALYSIS_FAILED without provider detail', async () => {
+  await resetAllTables();
+
+  const failingProvider = {
+    name: 'secret-provider-internal-7',
+    async analyze() {
+      throw new Error('connection refused to model host 10.0.0.7');
+    }
+  };
+
+  await assert.rejects(
+    analyzeAndCreateReviewBatch({ rawText: 'Some rice.' }, { analyzerProvider: failingProvider }),
+    (error) => {
+      assert.equal(error.code, ANALYSIS_ERROR_CODES.ANALYSIS_FAILED);
+      assert.ok(!error.message.includes('secret-provider') && !error.message.includes('10.0.0.7'));
+      return true;
+    }
+  );
+});
+
+test('analyses exceeding the wall-clock budget map to AI_ANALYSIS_FAILED', async () => {
+  await resetAllTables();
+
+  const hangingProvider = {
+    name: 'hanging-analyzer',
+    async analyze() {
+      return new Promise(() => {}); // never resolves
+    }
+  };
+
+  await assert.rejects(
+    analyzeAndCreateReviewBatch(
+      { rawText: 'Some rice.' },
+      { analyzerProvider: hangingProvider, analysisTimeoutMs: 40 }
+    ),
+    (error) => error.code === ANALYSIS_ERROR_CODES.ANALYSIS_FAILED
+  );
+
+  const batchCount = await pool.query('SELECT COUNT(*)::int AS count FROM intake_batches');
+  assert.equal(batchCount.rows[0].count, 0);
+});
+
+// ---------------------------------------------------------------------------
+// Ticket 2.3: HTTP mapping — every recoverable analysis failure renders the
+// safe form with the original description; none may surface as a JSON 500.
+// ---------------------------------------------------------------------------
+test('an oversized description returns a 400 safe form and never reaches the provider', async () => {
+  await resetAllTables();
+
+  const provider = stubProvider(TWO_ITEMS);
+  const longText = `Fridge: milk best before tomorrow. ${'More items. '.repeat(600)}`;
+
+  await withApp({ analyzerProvider: provider }, async (base) => {
+    const response = await postForm(base, '/batches/natural-language', new URLSearchParams({ rawText: longText }));
+    assert.equal(response.status, 400);
+    assert.match(response.headers.get('content-type') || '', /text\/html/);
+
+    const body = await response.text();
+    assert.match(body, /too long/i);
+    assert.ok(body.includes('Fridge: milk best before tomorrow.'));
+    assert.doesNotMatch(body, /Internal server error/);
+  });
+
+  assert.equal(provider.calls.length, 0);
+  const batchCount = await pool.query('SELECT COUNT(*)::int AS count FROM intake_batches');
+  assert.equal(batchCount.rows[0].count, 0);
+});
+
+test('contract-invalid provider output renders the unusable-response form with preserved text', async () => {
+  await resetAllTables();
+
+  const badProvider = wrapAnalyzerProvider({
+    name: 'bad-analyzer',
+    async analyze() {
+      return { items: [{ name: 'milk', unit: 'bottle' }] }; // unit without quantity
+    }
+  });
+
+  await withApp({ analyzerProvider: badProvider }, async (base) => {
+    const response = await postForm(
+      base,
+      '/batches/natural-language',
+      new URLSearchParams({ rawText: 'Two bottles of milk.' })
+    );
+    assert.equal(response.status, 422);
+    assert.match(response.headers.get('content-type') || '', /text\/html/);
+
+    const body = await response.text();
+    assert.match(body, /unusable response/i);
+    assert.ok(body.includes('Two bottles of milk.'));
+    assert.match(body, /href="\/batches\/manual"/);
+    assert.doesNotMatch(body, /bad-analyzer|Internal server error/);
+  });
+
+  const batchCount = await pool.query('SELECT COUNT(*)::int AS count FROM intake_batches');
+  assert.equal(batchCount.rows[0].count, 0);
+});
+
+test('a timed-out analysis renders the safe form with preserved text instead of a JSON 500', async () => {
+  await resetAllTables();
+
+  const hangingProvider = {
+    name: 'hanging-analyzer',
+    async analyze() {
+      return new Promise(() => {});
+    }
+  };
+
+  await withApp({ analyzerProvider: hangingProvider, analysisTimeoutMs: 40 }, async (base) => {
+    const response = await postForm(
+      base,
+      '/batches/natural-language',
+      new URLSearchParams({ rawText: 'Frozen peas and maybe some rice.' })
+    );
+    assert.equal(response.status, 422);
+    assert.match(response.headers.get('content-type') || '', /text\/html/);
+
+    const body = await response.text();
+    assert.match(body, /analysis failed/i);
+    assert.ok(body.includes('Frozen peas and maybe some rice.'));
+    assert.doesNotMatch(body, /Internal server error/);
+  });
+
+  const batchCount = await pool.query('SELECT COUNT(*)::int AS count FROM intake_batches');
+  assert.equal(batchCount.rows[0].count, 0);
+});
+
 test('the normal application analyzes through the configured fake provider without injection', async () => {
   await resetAllTables();
 

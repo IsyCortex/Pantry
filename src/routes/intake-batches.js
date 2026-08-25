@@ -244,17 +244,22 @@ function createIntakeBatchRouter(options = {}) {
         { rawText: req.body.rawText },
         {
           analyzerProvider: options.analyzerProvider,
-          analyzerProviderKind: options.analyzerProviderKind
+          analyzerProviderKind: options.analyzerProviderKind,
+          analysisTimeoutMs: options.analysisTimeoutMs
         }
       );
       res.redirect(`/batches/${result.batchId}/review`);
     } catch (error) {
-      if (
-        error.code === 'ANALYSIS_INPUT_REQUIRED' ||
-        error.code === 'NO_ITEMS_FOUND' ||
-        error.code === 'ANALYSIS_FAILED'
-      ) {
-        renderNaturalLanguageForm(req, res, { status: error.code === 'ANALYSIS_INPUT_REQUIRED' ? 400 : 422, errors: [error.message] });
+      const recoverableCodes = [
+        'ANALYSIS_INPUT_REQUIRED',
+        'ANALYSIS_INPUT_TOO_LONG',
+        'AI_INVALID_RESPONSE',
+        'NO_ITEMS_FOUND',
+        'AI_ANALYSIS_FAILED'
+      ];
+      if (recoverableCodes.includes(error.code)) {
+        const isClientInput = error.code === 'ANALYSIS_INPUT_REQUIRED' || error.code === 'ANALYSIS_INPUT_TOO_LONG';
+        renderNaturalLanguageForm(req, res, { status: isClientInput ? 400 : 422, errors: [error.message] });
         return;
       }
 
