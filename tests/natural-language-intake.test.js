@@ -491,28 +491,44 @@ test('a timed-out analysis renders the safe form with preserved text instead of 
 test('the normal application analyzes through the configured fake provider without injection', async () => {
   await resetAllTables();
 
-  await withApp({}, async (base) => {
-    const params = new URLSearchParams();
-    params.set('rawText', 'Fridge: two cartons of milk best before 20 August.');
+  // Hermetic against a developer .env selecting the live local provider: this
+  // test proves the zero-injection default resolution path, so every
+  // ANALYZER_* variable is removed for its duration and restored afterwards.
+  const saved = {};
+  for (const key of Object.keys(process.env)) {
+    if (key.startsWith('ANALYZER_')) {
+      saved[key] = process.env[key];
+      delete process.env[key];
+    }
+  }
+  try {
+    await withApp({}, async (base) => {
+      const params = new URLSearchParams();
+      params.set('rawText', 'Fridge: two cartons of milk best before 20 August.');
 
-    const response = await postForm(base, '/batches/natural-language', params, { redirect: 'manual' });
-    assert.equal(response.status, 302);
-    const location = response.headers.get('location');
-    assert.match(location, /^\/batches\/\d+\/review$/);
+      const response = await postForm(base, '/batches/natural-language', params, { redirect: 'manual' });
+      assert.equal(response.status, 302);
+      const location = response.headers.get('location');
+      assert.match(location, /^\/batches\/\d+\/review$/);
 
-    const review = await fetch(`${base}${location}`);
-    assert.equal(review.status, 200);
-    const body = await review.text();
-    assert.match(body, /milk/);
-    assert.match(body, /Fridge: two cartons of milk best before 20 August\./);
-  });
+      const review = await fetch(`${base}${location}`);
+      assert.equal(review.status, 200);
+      const body = await review.text();
+      assert.match(body, /milk/);
+      assert.match(body, /Fridge: two cartons of milk best before 20 August\./);
+    });
 
-  const batch = await pool.query('SELECT source_type, processor_id FROM intake_batches ORDER BY id DESC LIMIT 1');
-  assert.equal(batch.rows[0].source_type, 'natural_language');
-  assert.equal(batch.rows[0].processor_id, 'fake');
+    const batch = await pool.query('SELECT source_type, processor_id FROM intake_batches ORDER BY id DESC LIMIT 1');
+    assert.equal(batch.rows[0].source_type, 'natural_language');
+    assert.equal(batch.rows[0].processor_id, 'fake');
 
-  const inventoryCount = await pool.query('SELECT COUNT(*)::int AS count FROM inventory_items');
-  assert.equal(inventoryCount.rows[0].count, 0);
+    const inventoryCount = await pool.query('SELECT COUNT(*)::int AS count FROM inventory_items');
+    assert.equal(inventoryCount.rows[0].count, 0);
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      process.env[key] = value;
+    }
+  }
 });
 
 test('a provider-resolution failure renders the safe form with preserved text instead of a JSON 500', async () => {

@@ -138,12 +138,20 @@ function validateAnalyzerProposal(output) {
 
 function assertAnalyzerInput(input) {
   const result = validateAnalyzerInput(input);
-  if (!result.ok) throw new Error(`ANALYZER_INVALID_INPUT: ${result.errors.join('; ')}`);
+  if (!result.ok) {
+    const error = new Error(`ANALYZER_INVALID_INPUT: ${result.errors.join('; ')}`);
+    error.code = 'ANALYZER_INVALID_INPUT';
+    throw error;
+  }
 }
 
 function assertAnalyzerProposal(output) {
   const result = validateAnalyzerProposal(output);
-  if (!result.ok) throw new Error(`ANALYZER_INVALID_OUTPUT: ${result.errors.join('; ')}`);
+  if (!result.ok) {
+    const error = new Error(`ANALYZER_INVALID_OUTPUT: ${result.errors.join('; ')}`);
+    error.code = 'ANALYZER_INVALID_OUTPUT';
+    throw error;
+  }
 }
 
 module.exports = {
