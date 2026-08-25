@@ -10,6 +10,20 @@ async function createManualIntakeBatch(client = pool) {
   return result.rows[0];
 }
 
+// Creates the persistent record for an analyzed natural-language proposal
+// (Ticket 2.2): the original user text and provider-neutral metadata are kept
+// so review and later tickets can trace every draft row back to its source.
+async function createNaturalLanguageIntakeBatch({ originalText, processorId, processorVersion = null }, client = pool) {
+  const result = await client.query(
+    `INSERT INTO intake_batches (source_type, state, original_text, processor_id, processor_version, processed_at)
+     VALUES ('natural_language', 'analyzed', $1, $2, $3, NOW())
+     RETURNING id, source_type, state, original_text, processor_id, processor_version, processed_at`,
+    [originalText, processorId, processorVersion]
+  );
+
+  return result.rows[0];
+}
+
 async function replaceDraftBatchItems(batchId, rows, client = pool) {
   await client.query('DELETE FROM intake_batch_items WHERE batch_id = $1', [batchId]);
 
@@ -120,6 +134,7 @@ async function setBatchConfirmed(batchId, client = pool) {
 
 module.exports = {
   createManualIntakeBatch,
+  createNaturalLanguageIntakeBatch,
   replaceDraftBatchItems,
   getDraftBatchById,
   getBatchForConfirmation,

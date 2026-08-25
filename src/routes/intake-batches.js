@@ -7,6 +7,7 @@ const {
   confirmIntakeBatch,
   confirmManualBatchFromInput
 } = require('../services/intake-batch-service');
+const { analyzeAndCreateReviewBatch } = require('../services/natural-language-intake-service');
 const { VALID_LOCATIONS, VALID_UNITS, VALID_DATE_TYPES } = require('../validation/intake-batch');
 
 function createEmptyRow(location = '') {
@@ -61,7 +62,7 @@ function buildReviewErrorDetails(rows) {
   return buildReviewRows(rows).map((row) => row.fieldErrors);
 }
 
-function createIntakeBatchRouter() {
+function createIntakeBatchRouter(options = {}) {
   const router = express.Router();
 
   router.get('/batches/manual', async (req, res, next) => {
@@ -214,6 +215,43 @@ function createIntakeBatchRouter() {
           units: Array.from(VALID_UNITS),
           dateTypes: Array.from(VALID_DATE_TYPES)
         });
+        return;
+      }
+
+      next(error);
+    }
+  });
+
+  // Natural-language intake (Ticket 2.2): the submitted description is always
+  // preserved on failure so the user can retry or fall back to the manual
+  // batch editor without retyping anything.
+  const renderNaturalLanguageForm = (req, res, { status = 200, errors = [] } = {}) => {
+    res.status(status).render('natural-language-batch', {
+      title: 'Natural-language intake',
+      rawText: req.body && typeof req.body.rawText === 'string' ? req.body.rawText : '',
+      errors,
+      notice: null
+    });
+  };
+
+  router.get('/batches/natural-language', (req, res) => {
+    renderNaturalLanguageForm(req, res);
+  });
+
+  router.post('/batches/natural-language', async (req, res, next) => {
+    try {
+      const result = await analyzeAndCreateReviewBatch(
+        { rawText: req.body.rawText },
+        { analyzerProvider: options.analyzerProvider }
+      );
+      res.redirect(`/batches/${result.batchId}/review`);
+    } catch (error) {
+      if (
+        error.code === 'ANALYSIS_INPUT_REQUIRED' ||
+        error.code === 'NO_ITEMS_FOUND' ||
+        error.code === 'ANALYSIS_FAILED'
+      ) {
+        renderNaturalLanguageForm(req, res, { status: error.code === 'ANALYSIS_INPUT_REQUIRED' ? 400 : 422, errors: [error.message] });
         return;
       }
 

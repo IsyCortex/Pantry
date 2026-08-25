@@ -17,7 +17,7 @@ function createApp(options = {}) {
   });
 
   app.use(healthRoutes);
-  app.use(createIntakeBatchRouter());
+  app.use(createIntakeBatchRouter({ analyzerProvider: options.analyzerProvider }));
   app.use(createInventoryRouter({ inventoryLoader: options.inventoryLoader }));
 
   app.use((error, _req, res, _next) => {
