@@ -47,8 +47,9 @@ module.exports = {
    * Supported kinds:
    *   - `fake`  : deterministic, offline, contract-shaped fixtures-based provider.
    *
-   * Unsupported kinds throw so misconfiguration fails loudly at startup rather
-   * than producing surprising behavior at request time.
+   * Unsupported kinds throw at construction time; the intake service resolves
+   * providers per request inside its safe analysis boundary, so such failures
+   * degrade to the recoverable analysis-failed state rather than a 500.
    *
    * @param {object} [options]
    * @param {string} [options.kind]  provider kind from ANALYZER_PROVIDER_KIND

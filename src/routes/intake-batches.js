@@ -242,7 +242,10 @@ function createIntakeBatchRouter(options = {}) {
     try {
       const result = await analyzeAndCreateReviewBatch(
         { rawText: req.body.rawText },
-        { analyzerProvider: options.analyzerProvider }
+        {
+          analyzerProvider: options.analyzerProvider,
+          analyzerProviderKind: options.analyzerProviderKind
+        }
       );
       res.redirect(`/batches/${result.batchId}/review`);
     } catch (error) {

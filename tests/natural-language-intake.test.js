@@ -1,3 +1,4 @@
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { pool, resetAllTables } = require('./helpers/test-db');
@@ -310,4 +311,51 @@ test('referenceDate is derived inside the configured timezone, not UTC', () => {
   }).format(new Date());
   assert.equal(context.timezone, process.env.ANALYZER_TIMEZONE || 'UTC');
   assert.equal(context.referenceDate, expected);
+});
+test('the normal application analyzes through the configured fake provider without injection', async () => {
+  await resetAllTables();
+
+  await withApp({}, async (base) => {
+    const params = new URLSearchParams();
+    params.set('rawText', 'Fridge: two cartons of milk best before 20 August.');
+
+    const response = await postForm(base, '/batches/natural-language', params, { redirect: 'manual' });
+    assert.equal(response.status, 302);
+    const location = response.headers.get('location');
+    assert.match(location, /^\/batches\/\d+\/review$/);
+
+    const review = await fetch(`${base}${location}`);
+    assert.equal(review.status, 200);
+    const body = await review.text();
+    assert.match(body, /milk/);
+    assert.match(body, /Fridge: two cartons of milk best before 20 August\./);
+  });
+
+  const batch = await pool.query('SELECT source_type, processor_id FROM intake_batches ORDER BY id DESC LIMIT 1');
+  assert.equal(batch.rows[0].source_type, 'natural_language');
+  assert.equal(batch.rows[0].processor_id, 'fake');
+
+  const inventoryCount = await pool.query('SELECT COUNT(*)::int AS count FROM inventory_items');
+  assert.equal(inventoryCount.rows[0].count, 0);
+});
+
+test('a provider-resolution failure renders the safe form with preserved text instead of a JSON 500', async () => {
+  await resetAllTables();
+
+  await withApp({ analyzerProviderKind: 'does-not-exist' }, async (base) => {
+    const params = new URLSearchParams();
+    params.set('rawText', 'Fridge: two cartons of milk best before 20 August.');
+
+    const response = await postForm(base, '/batches/natural-language', params);
+    assert.equal(response.status, 422);
+    assert.match(response.headers.get('content-type') || '', /text\/html/);
+
+    const body = await response.text();
+    assert.ok(body.includes('Fridge: two cartons of milk best before 20 August.'));
+    assert.match(body, /analysis failed/i);
+    assert.doesNotMatch(body, /Internal server error/);
+
+    const batchCount = await pool.query('SELECT COUNT(*)::int AS count FROM intake_batches');
+    assert.equal(batchCount.rows[0].count, 0);
+  });
 });

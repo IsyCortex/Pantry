@@ -10,7 +10,7 @@ const {
   replaceDraftBatchItems,
   updateBatchState
 } = require('../db/intake-batches');
-const { resolveAnalyzerProvider } = require('../analyzers/provider');
+const { createAnalyzerProvider } = require('../analyzers/provider');
 
 function createAnalysisInputError(message) {
   const error = new Error(message);
@@ -83,12 +83,16 @@ async function analyzeAndCreateReviewBatch({ rawText }, options = {}) {
     throw createAnalysisInputError('Enter a grocery description to analyze.');
   }
 
-  const provider = options.analyzerProvider || resolveAnalyzerProvider();
-
-  // The provider factory wraps every provider with the shared contract
-  // validator (Ticket 2.1), so a resolved proposal here is structurally valid.
+  // Provider resolution sits inside the same safe boundary as analysis: a
+  // misconfigured or unavailable provider must degrade to the recoverable
+  // analysis-failed state instead of surfacing as an unhandled 500. Tests can
+  // inject a ready provider or force a specific resolution kind explicitly.
+  let provider;
   let proposal;
   try {
+    provider =
+      options.analyzerProvider ||
+      createAnalyzerProvider({ kind: options.analyzerProviderKind || config.analyzerProvider });
     proposal = await provider.analyze(buildAnalyzerInput(trimmedText));
   } catch (error) {
     throw createAnalysisFailedError();
