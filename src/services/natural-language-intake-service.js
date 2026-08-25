@@ -65,6 +65,10 @@ function classifyAnalysisFailure(error) {
   if (error instanceof SyntaxError) {
     return ANALYSIS_ERROR_CODES.INVALID_RESPONSE;
   }
+  // Adapters type their own parse/shape failures (Ticket 2.4); honor that.
+  if (error && error.code === 'AI_INVALID_RESPONSE') {
+    return ANALYSIS_ERROR_CODES.INVALID_RESPONSE;
+  }
   if (
     typeof error.message === 'string' &&
     error.message.startsWith('ANALYZER_INVALID_OUTPUT')

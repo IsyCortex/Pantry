@@ -46,6 +46,8 @@ module.exports = {
    *
    * Supported kinds:
    *   - `fake`  : deterministic, offline, contract-shaped fixtures-based provider.
+   *   - `local` : language-model server speaking the Ollama /api/generate protocol
+   *               (URL/model configurable via ANALYZER_LOCAL_URL/MODEL).
    *
    * Unsupported kinds throw at construction time; the intake service resolves
    * providers per request inside its safe analysis boundary, so such failures
@@ -64,6 +66,11 @@ module.exports = {
       // avoids circular imports.
       const { createFakeAnalyzerProvider } = require('./fake-provider');
       return wrapAnalyzerProvider(createFakeAnalyzerProvider(options));
+    }
+
+    if (kind === kinds.LOCAL) {
+      const { createLocalAnalyzerProvider } = require('./local-provider');
+      return wrapAnalyzerProvider(createLocalAnalyzerProvider(options));
     }
 
     throw new Error(`Unsupported ANALYZER_PROVIDER kind: ${kind}`);

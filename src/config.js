@@ -11,9 +11,12 @@ module.exports = {
   port: Number(process.env.PORT || 3000),
   databaseUrl: process.env.DATABASE_URL || 'postgres://pantry:pantry@127.0.0.1:15432/pantry',
   // Provider selection for input analysis. `fake` is deterministic and offline,
-  // suitable for development and automated tests. A local language-model provider
-  // will be added behind the same contract in Ticket 2.4.
+  // suitable for development and automated tests. `local` speaks the Ollama
+  // /api/generate protocol against a locally running language model (Ticket 2.4).
   analyzerProvider: process.env.ANALYZER_PROVIDER || 'fake',
+  // Local model server settings, used only when analyzerProvider is `local`.
+  analyzerLocalUrl: process.env.ANALYZER_LOCAL_URL || 'http://127.0.0.1:11434',
+  analyzerLocalModel: process.env.ANALYZER_LOCAL_MODEL || 'llama3.2',
   // Wall-clock budget for a single analyzer call. Contract budget is 15s;
   // overruns degrade to the recoverable analysis-failed state (Ticket 2.3).
   analyzerTimeoutMs: Number(process.env.ANALYZER_TIMEOUT_MS || 15000),

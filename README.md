@@ -137,6 +137,26 @@ DB-backed tests currently share the repository-controlled test database and use 
 
 The foundation intentionally excludes inventory, batch intake, natural-language analysis, and other later feature workflows.
 
+## Local language-model analyzer (optional)
+
+Natural-language intake works out of the box with the built-in deterministic `fake` analyzer (the default). To analyze descriptions with a locally running language model instead, Pantry speaks the Ollama `/api/generate` protocol:
+
+1. Install [Ollama](https://ollama.com) and pull a model, e.g. `ollama pull llama3.2`.
+2. Point Pantry at it in `.env`:
+
+```bash
+ANALYZER_PROVIDER=local
+ANALYZER_LOCAL_URL=http://127.0.0.1:11434
+ANALYZER_LOCAL_MODEL=llama3.2
+```
+
+Notes:
+
+- The model proposes draft rows only: every proposal passes the same application-owned structural validation as any other provider before reaching human review.
+- The extraction prompt forbids inventing missing values (absent data stays `null`) and instructs the model to ignore any instructions embedded in the grocery text.
+- Provider, timeout, and parsing failures degrade to the safe recoverable analysis state; the submitted text is preserved for retry or manual continuation.
+- Automated tests never require a running model: they use stubbed HTTP servers and the deterministic fake provider.
+
 ## M0 implementation record
 
 ### Delivered across Tickets 0.1–0.5
