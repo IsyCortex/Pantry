@@ -21,6 +21,19 @@ function assertOpenManualBatch(batch, message) {
   }
 }
 
+// Natural-language proposals share the manual review workflow (ADR-0002):
+// they stay editable until confirmed, so the same open-state rule applies to
+// both source types when saving review corrections.
+function assertOpenEditableBatch(batch, message) {
+  if (
+    !batch ||
+    !['manual', 'natural_language'].includes(batch.source_type) ||
+    !EDITABLE_BATCH_STATES.has(batch.state)
+  ) {
+    throw createInvalidStateError(message);
+  }
+}
+
 function createValidationError(details) {
   const error = new Error('VALIDATION_FAILED');
   error.code = 'VALIDATION_FAILED';
@@ -130,6 +143,7 @@ async function getManualDraftBatch(batchId) {
     id: Number(batch.id),
     state: batch.state,
     sourceType: batch.source_type,
+    originalText: batch.original_text ?? null,
     rows: buildReviewRows(batch.rows.map((row) => ({
       id: Number(row.id),
       position: row.position,
@@ -160,7 +174,7 @@ async function saveManualDraftBatch({ batchId, rows }) {
       targetBatchId = created.id;
     } else {
       const existing = await getDraftBatchById(targetBatchId, client);
-      assertOpenManualBatch(existing, 'Only open manual batches can be edited.');
+      assertOpenEditableBatch(existing, 'Only open intake batches can be edited.');
     }
 
     await replaceDraftBatchItems(targetBatchId, validation.value, client);

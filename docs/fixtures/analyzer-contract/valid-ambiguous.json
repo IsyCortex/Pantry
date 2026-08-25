@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "name": "milk",
+      "quantity": 2,
+      "unit": "package",
+      "location": null,
+      "expirationDate": null,
+      "dateType": null
+    },
+    {
+      "name": "rice",
+      "quantity": null,
+      "unit": null,
+      "location": null,
+      "expirationDate": null,
+      "dateType": null
+    },
+    {
+      "name": "frozen peas",
+      "quantity": null,
+      "unit": null,
+      "location": null,
+      "expirationDate": null,
+      "dateType": null
+    }
+  ]
+}

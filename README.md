@@ -137,6 +137,30 @@ DB-backed tests currently share the repository-controlled test database and use 
 
 The foundation intentionally excludes inventory, batch intake, natural-language analysis, and other later feature workflows.
 
+## Local language-model analyzer (optional)
+
+Natural-language intake works out of the box with the built-in deterministic `fake` analyzer (the default). To analyze descriptions with a locally running language model instead, Pantry speaks the Ollama `/api/generate` protocol:
+
+1. Install [Ollama](https://ollama.com) and pull a model, e.g. `ollama pull llama3.2`.
+2. Point Pantry at it in `.env`:
+
+```bash
+ANALYZER_PROVIDER=local
+ANALYZER_LOCAL_URL=http://127.0.0.1:11434
+ANALYZER_LOCAL_MODEL=llama3.2
+ANALYZER_TIMEOUT_MS=15000
+ANALYZER_TIMEZONE=UTC
+```
+
+Notes:
+
+- Extraction requests explicitly disable model thinking (`think: false`, so reasoning models such as Qwen3 put the completion into `response`, not `thinking`) and use Ollama structured outputs: the `format` field carries a JSON schema derived from the application-owned analyzer contract (controlled units, locations, and date types; nullable fields; item-count and name-length limits). Only the `response` field is treated as analyzer output; a `thinking` payload is never parsed as a fallback.
+- Known provider-schema limitation: Ollama's grammar generator cannot compile JSON-schema `pattern` (regex) constraints — including them aborts generation before inference with HTTP 400 (`Failed to initialize samplers: failed to parse grammar`). The structured-output schema therefore omits `pattern` and expresses every constraint Ollama supports (required shape, closed properties, nullability, enums, bounds); calendar-valid ISO dates are enforced exclusively by the shared application validator, which rejects out-of-contract completions as a whole.
+- The model proposes draft rows only: every proposal passes the same application-owned structural validation as any other provider before reaching human review; structurally invalid proposals are rejected as a whole.
+- The extraction prompt forbids inventing missing values (absent data stays JSON `null`, never the string `"null"`), extracts groceries only, and instructs the model to ignore any instructions embedded in the grocery text. Canonical date types are `best_before`, `use_by`, and `unspecified`.
+- Provider, timeout, and parsing failures degrade to the safe recoverable analysis state; the submitted text is preserved for retry or manual continuation, and raw provider details never reach the user.
+- Automated tests never require a running model: they use stubbed HTTP servers and the deterministic fake provider.
+
 ## M0 implementation record
 
 ### Delivered across Tickets 0.1–0.5

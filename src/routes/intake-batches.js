@@ -7,6 +7,7 @@ const {
   confirmIntakeBatch,
   confirmManualBatchFromInput
 } = require('../services/intake-batch-service');
+const { analyzeAndCreateReviewBatch } = require('../services/natural-language-intake-service');
 const { VALID_LOCATIONS, VALID_UNITS, VALID_DATE_TYPES } = require('../validation/intake-batch');
 
 function createEmptyRow(location = '') {
@@ -61,7 +62,7 @@ function buildReviewErrorDetails(rows) {
   return buildReviewRows(rows).map((row) => row.fieldErrors);
 }
 
-function createIntakeBatchRouter() {
+function createIntakeBatchRouter(options = {}) {
   const router = express.Router();
 
   router.get('/batches/manual', async (req, res, next) => {
@@ -221,6 +222,51 @@ function createIntakeBatchRouter() {
     }
   });
 
+  // Natural-language intake (Ticket 2.2): the submitted description is always
+  // preserved on failure so the user can retry or fall back to the manual
+  // batch editor without retyping anything.
+  const renderNaturalLanguageForm = (req, res, { status = 200, errors = [] } = {}) => {
+    res.status(status).render('natural-language-batch', {
+      title: 'Natural-language intake',
+      rawText: req.body && typeof req.body.rawText === 'string' ? req.body.rawText : '',
+      errors,
+      notice: null
+    });
+  };
+
+  router.get('/batches/natural-language', (req, res) => {
+    renderNaturalLanguageForm(req, res);
+  });
+
+  router.post('/batches/natural-language', async (req, res, next) => {
+    try {
+      const result = await analyzeAndCreateReviewBatch(
+        { rawText: req.body.rawText },
+        {
+          analyzerProvider: options.analyzerProvider,
+          analyzerProviderKind: options.analyzerProviderKind,
+          analysisTimeoutMs: options.analysisTimeoutMs
+        }
+      );
+      res.redirect(`/batches/${result.batchId}/review`);
+    } catch (error) {
+      const recoverableCodes = [
+        'ANALYSIS_INPUT_REQUIRED',
+        'ANALYSIS_INPUT_TOO_LONG',
+        'AI_INVALID_RESPONSE',
+        'NO_ITEMS_FOUND',
+        'AI_ANALYSIS_FAILED'
+      ];
+      if (recoverableCodes.includes(error.code)) {
+        const isClientInput = error.code === 'ANALYSIS_INPUT_REQUIRED' || error.code === 'ANALYSIS_INPUT_TOO_LONG';
+        renderNaturalLanguageForm(req, res, { status: isClientInput ? 400 : 422, errors: [error.message] });
+        return;
+      }
+
+      next(error);
+    }
+  });
+
   router.get('/batches/:batchId/review', async (req, res, next) => {
     try {
       const batch = await getManualDraftBatch(Number(req.params.batchId));
@@ -229,12 +275,15 @@ function createIntakeBatchRouter() {
         return;
       }
 
-      res.status(200).render('batch-review', createReviewLocals({
-        batchId: batch.id,
-        rows: batch.rows,
-        defaultLocation: '',
-        notice: req.query.notice === 'corrections_saved' ? 'Review corrections saved.' : null
-      }));
+      res.status(200).render('batch-review', {
+        ...createReviewLocals({
+          batchId: batch.id,
+          rows: batch.rows,
+          defaultLocation: '',
+          notice: req.query.notice === 'corrections_saved' ? 'Review corrections saved.' : null
+        }),
+        originalText: batch.originalText || ''
+      });
     } catch (error) {
       next(error);
     }

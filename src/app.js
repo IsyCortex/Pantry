@@ -7,7 +7,7 @@ const { createIntakeBatchRouter } = require('./routes/intake-batches');
 function createApp(options = {}) {
   const app = express();
 
-    app.set('view engine', 'ejs');
+  app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, 'views'));
   app.use(express.static(path.join(__dirname, 'public')));
   app.use(express.urlencoded({ extended: true }));
@@ -17,7 +17,11 @@ function createApp(options = {}) {
   });
 
   app.use(healthRoutes);
-  app.use(createIntakeBatchRouter());
+  app.use(createIntakeBatchRouter({
+    analyzerProvider: options.analyzerProvider,
+    analyzerProviderKind: options.analyzerProviderKind,
+    analysisTimeoutMs: options.analysisTimeoutMs
+  }));
   app.use(createInventoryRouter({ inventoryLoader: options.inventoryLoader }));
 
   app.use((error, _req, res, _next) => {

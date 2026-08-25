@@ -2,9 +2,9 @@
   "items": [
     {
       "name": "rice",
-      "quantity": null,
-      "unit": null,
-      "location": "pantry",
+      "quantity": 1,
+      "unit": "package",
+      "location": null,
       "expirationDate": null,
       "dateType": null
     }
