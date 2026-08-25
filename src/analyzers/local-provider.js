@@ -25,10 +25,17 @@ const {
 const DEFAULT_TIMEOUT_MS = 15000;
 
 // Structured-output JSON schema handed to Ollama via `format`. It is derived
-// from the application-owned analyzer contract and mirrors exactly the rules
-// the shared validator enforces afterwards — it is not an Ollama-specific
-// variant of the contract. Absent values must serialize as JSON null, which
-// is expressed through ["T", "null"] type unions plus null-tolerant enums.
+// from the application-owned analyzer contract and keeps every constraint the
+// installed Ollama grammar generator can compile (verified by live
+// bisection): required shape, closed properties, nullability, controlled
+// value enums, name-length and item-count bounds, positive quantities.
+//
+// Known provider limitation (documented deliberately): Ollama fails to
+// compile regex `pattern` constraints ("Failed to initialize samplers:
+// failed to parse grammar"), so date FORMAT is intentionally NOT expressed
+// here. The shared application validator remains the authoritative boundary
+// for calendar-valid ISO dates and every rule this schema cannot carry —
+// an out-of-contract completion is rejected there as a whole proposal.
 function createProposalJsonSchema() {
   return {
     type: 'object',
@@ -47,7 +54,9 @@ function createProposalJsonSchema() {
             quantity: { type: ['number', 'null'], exclusiveMinimum: 0 },
             unit: { type: ['string', 'null'], enum: [...UNITS, null] },
             location: { type: ['string', 'null'], enum: [...LOCATIONS, null] },
-            expirationDate: { type: ['string', 'null'], pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+            // No `pattern` here on purpose: unsupported by the Ollama grammar
+            // generator. ISO-date validity is enforced by the shared validator.
+            expirationDate: { type: ['string', 'null'] },
             dateType: { type: ['string', 'null'], enum: [...DATE_TYPES, null] }
           }
         }

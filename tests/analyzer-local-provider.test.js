@@ -92,6 +92,34 @@ test('parses a valid JSON completion into contract-valid proposals', async () =>
   }
 });
 
+test('the structured-output schema stays within Ollama-supported grammar constructs', () => {
+  const schema = createProposalJsonSchema();
+  const serialized = JSON.stringify(schema);
+
+  // Live bisection against the installed Ollama showed its grammar generator
+  // rejects regex `pattern` ("Failed to initialize samplers: failed to parse
+  // grammar") while compiling everything else this schema expresses. Date
+  // format therefore stays the shared validator's responsibility.
+  assert.ok(!serialized.includes('"pattern"'), 'schema must not contain pattern constraints');
+  const item = schema.properties.items.items;
+  assert.ok(!('pattern' in item.properties.expirationDate));
+  assert.deepEqual(item.properties.expirationDate.type, ['string', 'null']);
+
+  // Every constraint Ollama DOES support must remain pinned here so future
+  // edits cannot silently drop strictness:
+  assert.equal(schema.additionalProperties, false);
+  assert.equal(item.additionalProperties, false);
+  assert.equal(schema.properties.items.maxItems, 50); // MAX_ITEMS
+  assert.equal(item.properties.name.maxLength, 120); // MAX_NAME_LENGTH
+  assert.deepEqual(item.required, ['name', 'quantity', 'unit', 'location', 'expirationDate', 'dateType']);
+  assert.deepEqual(item.properties.unit.type, ['string', 'null']);
+  assert.ok(item.properties.unit.enum.includes('package') && item.properties.unit.enum.includes(null));
+  assert.ok(item.properties.location.enum.includes('fridge'));
+  assert.deepEqual(item.properties.dateType.type, ['string', 'null']);
+  assert.ok(item.properties.dateType.enum.includes('best_before'));
+  assert.equal(item.properties.quantity.exclusiveMinimum, 0);
+});
+
 test('accepts completions wrapped in markdown fences', async () => {
   const fenced = '```json\n' + VALID_COMPLETION + '\n```';
   const stub = await startOllamaStub(ollamaCompletion(fenced));
