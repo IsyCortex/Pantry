@@ -31,3 +31,14 @@ This log records implementation-phase engineering notes, deviations, and evidenc
 - The M1 browser walkthrough (`docs/m1-browser-test-plan.md`, pinned to `637a73e`) remains valid for the final HEAD: all commits from `637a73e` to `99853ca` were documentation-only, so application behavior did not change.
 - Clean-migration evidence already in `docs/blockers/2026-08-18-ticket-1.5-migration-chain-source-batch-id.md` and Ticket 1.7 (`Issue #27`) covers the final schema state; no migration or schema file changed since, so a repeat clean-migration run was not required.
 - Release-readiness integration confirms the delivered M1 journey (manual intake → batch confirm/direct-save → inventory display → edit/use-up/discard) with all M1 tickets on the board `Done` except `1.7` in `Ready for Acceptance`, awaiting product-owner acceptance via `Issue #27`.
+
+## M2 completion (2026-08-25)
+
+Milestone 2 — Natural-language batch analysis — completed. The milestone's only ticket was **Ticket 2.5 — Conduct live-model evaluation** (`Issue #16`).
+
+- Branch: `feature/m2`, final commit `69520cb` ("Evaluation: S17 expected outcome + L7 approximate-duration note"), tree clean, in sync with `origin/feature/m2`.
+- Workflow followed: implementation → serial verify → commit → push → issue evidence — `npm test` run serially: **106/106 pass**; focused local-provider adapter suite **16/16 pass**; no live model required.
+- Live-model evaluation (`scripts/evaluate-local-model.js`, qwen3:30b-a3b, `referenceDate` 2026-08-25 UTC): all accepted scenarios landed in review batches read back from PostgreSQL; evaluation batches were `cancelled` afterward; no inventory row was ever written.
+- Outcomes: S3 20/20 items; S10/S11 injection defense held; S17 (verbatim) resolved eggs `2026-08-30`, milk `2026-08-26` (explicit calendar date, exact), feta `2026-09-16` this run; S9 bare-temporal-phrase items → `null` dates (L3 resolved via conditional relative-date rule).
+- Owner decisions (Issue #16): L1 accepted narrowly (explicit "frozen" names only); L2 accepted (container-word 422); L3 resolved; L4 accepted; L5 removed (harness `toISOString()` UTC conversion defect — storage and review UI verified correct); L6 accepted; L7 accepted narrowly (approximate duration arithmetic varies ±1 day across runs; explicit calendar/use-by/best-before dates must remain exact — distinct from L5).
+- Release for M2 (merge to `main`, version tag, GitHub Release, milestone close) is deferred pending explicit product-owner release authorization, per Gitflow release handling in `docs/development-workflow.md`. The M2 ticket itself (2.5) is complete and awaiting acceptance sign-off on the board.
