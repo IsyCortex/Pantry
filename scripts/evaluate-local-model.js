@@ -81,11 +81,18 @@ const SCENARIOS = [
 ];
 
 // Normalizes a DATE column value to a YYYY-MM-DD display string. pg returns
-// DATE columns as JavaScript Date objects; raw String() slicing is locale
-// dependent, so always go through the UTC ISO form.
+// DATE columns as JavaScript Date objects at local midnight. Never use
+// toISOString() to format these: it converts to UTC, so on a timezone ahead of
+// UTC (e.g. Europe/Berlin, CEST +0200) it reports the previous calendar day.
+// Read the local wall-clock components to reproduce the stored calendar date.
 function toCalendarDate(value) {
   if (value == null) return null;
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (value instanceof Date) {
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, '0');
+    const d = String(value.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
   const text = String(value);
   return text.length >= 10 ? text.slice(0, 10) : text;
 }
