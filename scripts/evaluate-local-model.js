@@ -80,6 +80,16 @@ const SCENARIOS = [
   { id: 'S17', title: 'Ticket 2.4 owner regression: list with fridge + dates phrasing', text: 'eggs, milk, and feta in the fridge with relative and explicit dates' }
 ];
 
+// Normalizes a DATE column value to a YYYY-MM-DD display string. pg returns
+// DATE columns as JavaScript Date objects; raw String() slicing is locale
+// dependent, so always go through the UTC ISO form.
+function toCalendarDate(value) {
+  if (value == null) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  const text = String(value);
+  return text.length >= 10 ? text.slice(0, 10) : text;
+}
+
 async function readBatchItems(batchId) {
   const { rows } = await pool.query(
     `SELECT position, name, quantity, unit, location, expiration_date, date_type, accepted
@@ -90,7 +100,7 @@ async function readBatchItems(batchId) {
   );
   return rows.map((row) => ({
     ...row,
-    expiration_date: row.expiration_date ? String(row.expiration_date).slice(0, 10) : null
+    expiration_date: toCalendarDate(row.expiration_date)
   }));
 }
 
