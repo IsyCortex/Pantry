@@ -49,7 +49,9 @@ Architectural decisions that require trade-off records are maintained as individ
 
 ## Current status
 
-Milestone 0 is complete and released as `v0.1.2`. The implementation stack, foundational architecture, and analyzer-contract specification are accepted for the current development phase.
+Milestone 3 is complete and released as `v0.4.0`. Expiration awareness and inventory navigation are accepted for the current development phase.
+
+Earlier milestone releases: Milestone 2 `v0.3.0` (natural-language batch analysis), Milestone 1 `v0.2.0` (manual inventory and shared batch workflow), and Milestone 0 `v0.1.2` (foundational application architecture and analyzer contract).
 
 ## Local foundation setup
 

@@ -75,6 +75,12 @@ Milestone 3 targets expiration awareness over the Pantry inventory.
   - DB-backed route (`tests/inventory.route.test.js`): a consistency test inserts four items (one per status), parses the served overview cards, and asserts each card's count equals the number of items its filtered view returns (expired/expiring_soon/later/no_date), plus that the status filter carries through; a zero-state test asserts the reassurance message renders when nothing is expiring and both zero-actions cards are shown; an empty-inventory test asserts the overview is absent while the "No food has been added yet." orientation shows.
 - One mid-work test-defect (a regex that did not account for the label span and closing anchor being on separate lines) was caught by the suite and fixed.
 - Verification: full serial suite `node --test --test-concurrency=1` → **141/141 pass, 0 fail** (135 before Ticket 3.4).
+### M3 release — v0.4.0
+
+- All four M3 tickets accepted and Done (issues #17–#20 closed). Owner authorized release prep and approved `v0.4.0`, including the README current-status correction.
+- Release README/status correction committed on `feature/m3`; full serial suite rerun at that SHA.
+- Release sequence executed per `docs/development-workflow.md` (release responsibilities): explicit `--no-ff` merge of `feature/m3` into `main`; annotated tag `v0.4.0` on the verified `main` release commit, pushed and verified to dereference to that exact commit; GitHub Release published only after remote-tag verification; `main` merged back into `develop` with an explicit `--no-ff` merge commit, pushed and verified to contain the tagged release commit.
+- The M3 milestone was **not** closed and `feature/m4` was **not** created — both await separate owner authorization.
 ## M1 corrections (after first Path A browser walkthrough)
 
 ### Automated tests isolated from the development database
