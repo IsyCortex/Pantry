@@ -28,7 +28,7 @@
         </section>
         <section class="inventory-list">
           <% items.forEach((item) => { %>
-            <article class="inventory-item" data-date="<%= item.expirationDate || '' %>" data-location="<%= item.location %>">
+            <article class="inventory-item" data-date="<%= item.expirationDate || '' %>" data-location="<%= item.location %>" data-status="<%= item.expirationStatus || '' %>">
               <div class="inventory-row">
                 <strong><%= item.name %></strong>
                 <span><%= item.location %></span>
@@ -41,6 +41,9 @@
                 <p class="meta"><%= item.dateTypeLabel || 'Expiration date' %>: <%= item.expirationDate %></p>
               <% } else { %>
                 <p class="meta">No expiration date</p>
+              <% } %>
+              <% if (item.expirationStatusLabel) { %>
+                <p class="meta"><span class="status-badge status-<%= item.expirationStatusClass %>"><%= item.expirationStatusLabel %></span></p>
               <% } %>
             </article>
           <% }) %>

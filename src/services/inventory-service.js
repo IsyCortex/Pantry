@@ -1,5 +1,6 @@
 const { createInventoryItem, getInventoryItemById, updateInventoryItem, transitionInventoryLifecycle, listActiveInventoryItems } = require('../db/inventory');
 const { validateInventoryItem } = require('../validation/inventory');
+const { applyExpirationStatus } = require('./expiration-status-service');
 
 async function createConfirmedInventoryItem(input, client) {
   const validation = validateInventoryItem(input);
@@ -95,7 +96,7 @@ function formatCalendarDate(dateValue) {
 async function getActiveInventoryForDisplay() {
   const items = await listActiveInventoryItems();
 
-  return items.map((item) => ({
+  const displayItems = items.map((item) => ({
     id: item.id,
     name: item.name,
     location: item.location,
@@ -105,6 +106,10 @@ async function getActiveInventoryForDisplay() {
     dateTypeLabel: item.expiration_date ? formatDateType(item.date_type) : null,
     isUndated: item.expiration_date == null
   }));
+
+  // Status is calculated per request, never persisted. Uses the centralized,
+  // injectable application clock in config.expirationTimezone (Europe/Berlin).
+  return applyExpirationStatus(displayItems);
 }
 
 module.exports = {

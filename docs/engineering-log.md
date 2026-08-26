@@ -10,6 +10,25 @@ This log records implementation-phase engineering notes, deviations, and evidenc
 - Pantry release tags follow Semantic Versioning, and the corrected M0 release is `v0.1.2`.
 - Ticket-level implementation evidence continues to be recorded in the corresponding GitHub issues as the authoritative live technical record.
 
+## M3 — Expiration awareness and inventory navigation
+
+Milestone 3 targets expiration awareness over the Pantry inventory.
+
+### Ticket 3.1 — Derive expiration status
+
+- Branch: `feature/m3`, based on the released `v0.3.0` state (`42d9790`, the post-M2 `develop` tip) — M2 was released before M3 work began, per the workflow release sequence.
+- Owner decisions (Issue #17):
+  - **Q1 threshold:** fixed 3-calendar-day `expiring_soon` window — an item expiring today or within 3 days is `expiring_soon`; before today is `expired`; after the window is `later`; undated is `no_date`. The window is centralized (`config.expirationSoonDays`, env-overridable, default 3) so it can be re-tuned without UI changes. No settings UI is added in MVP.
+  - **Q2 timezone:** a dedicated application/expiration timezone (`config.expirationTimezone`, default `Europe/Berlin`), deliberately **separate** from `analyzerTimezone` (the latter governs analyzer context per the input-pipeline contract). Inventory expiration calculations own their own zone. A future per-account/household model should supply this value; for now it is a project constant. The application date is derived once via the centralized `todayInZone` so it can never disagree with itself around local midnight.
+- Implementation:
+  - New `src/services/app-date.js`: single source of truth for zone-aware calendar dates — `calendarDateInZone(date, tz)`, `todayInZone(tz, now)` (injectable `now`), and `daysBetween(startDate, endDate)` over date-only `YYYY-MM-DD` strings (parsed as UTC midnights → exact day count, no zone ambiguity). `calendarDateInZone`/`buildAnalyzerInput` in `natural-language-intake-service.js` now delegate here; the existing L5-style midnight regression test (Europe/Berlin vs Pacific/Honolulu vs UTC) still passes, confirming behavior-preserving extraction.
+  - New `src/services/expiration-status-service.js`: pure `deriveExpirationStatus(item, referenceDate, soonWindowDays)` returning `expired`/`expiring_soon`/`later`/`no_date`. `date_type` (best_before/use_by) is intentionally **not** part of the classification — it only labels the date; the interface never claims a date alone determines food safety.
+  - `getActiveInventoryForDisplay` now also returns `expirationStatus`, `expirationStatusLabel`, and `expirationStatusClass` (additive; `isUndated` retained). Status is **calculated per request**, never persisted.
+  - View (`src/views/inventory.ejs`) renders a neutral status badge (e.g. "Expiring soon") and a `data-status` attribute for future sort/filter hooks; existing date-type labels ("Best before"/"Use by"/"Date type not specified") carry quality-vs-safety context.
+  - Config: `EXPIRATION_TIMEZONE` and `EXPIRATION_SOON_DAYS` documented in `.env.example` and `README.md`.
+- Tests: `tests/expiration-status.test.js` (pure, no DB) covers `no_date`, `expired`, the 0/1/2/3 → expiring_soon and 4 → later boundary, a `soonWindowDays` override, best_before/use_by parity, and a Berlin-midnight `todayInZone` regression that asserts the calendar date, not UTC.
+- Domain doc (`docs/domain-model.md`) updated to record the confirmed threshold and timezone.
+
 ## M1 corrections (after first Path A browser walkthrough)
 
 ### Automated tests isolated from the development database

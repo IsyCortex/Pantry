@@ -161,6 +161,19 @@ Notes:
 - Provider, timeout, and parsing failures degrade to the safe recoverable analysis state; the submitted text is preserved for retry or manual continuation, and raw provider details never reach the user.
 - Automated tests never require a running model: they use stubbed HTTP servers and the deterministic fake provider.
 
+## Inventory expiration status
+
+Pantry derives an expiration status for each dated inventory item: `expired`, `expiring soon`, `later`, or `no date`. The reference day is the calendar date in a dedicated timezone (separate from the analyzer timezone), and the `expiring_soon` threshold is a fixed 3-day window. Both are environment settings (see `.env.example`):
+
+```bash
+# IANA timezone for expiration "today" (default Europe/Berlin; separate from ANALYZER_TIMEZONE).
+EXPIRATION_TIMEZONE=Europe/Berlin
+# Calendar days within which a dated item is expiring_soon (default 3).
+EXPIRATION_SOON_DAYS=3
+```
+
+A future per-account/household model will supply the household timezone.
+
 ## M0 implementation record
 
 ### Delivered across Tickets 0.1–0.5
