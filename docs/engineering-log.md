@@ -10,6 +10,77 @@ This log records implementation-phase engineering notes, deviations, and evidenc
 - Pantry release tags follow Semantic Versioning, and the corrected M0 release is `v0.1.2`.
 - Ticket-level implementation evidence continues to be recorded in the corresponding GitHub issues as the authoritative live technical record.
 
+## M3 — Expiration awareness and inventory navigation
+
+Milestone 3 targets expiration awareness over the Pantry inventory.
+
+### Ticket 3.1 — Derive expiration status
+
+- Branch: `feature/m3`, based on the released `v0.3.0` state (`42d9790`, the post-M2 `develop` tip) — M2 was released before M3 work began, per the workflow release sequence.
+- Owner decisions (Issue #17):
+  - **Q1 threshold:** fixed 3-calendar-day `expiring_soon` window — an item expiring today or within 3 days is `expiring_soon`; before today is `expired`; after the window is `later`; undated is `no_date`. The window is centralized (`config.expirationSoonDays`, env-overridable, default 3) so it can be re-tuned without UI changes. No settings UI is added in MVP.
+  - **Q2 timezone:** a dedicated application/expiration timezone (`config.expirationTimezone`, default `Europe/Berlin`), deliberately **separate** from `analyzerTimezone` (the latter governs analyzer context per the input-pipeline contract). Inventory expiration calculations own their own zone. A future per-account/household model should supply this value; for now it is a project constant. The application date is derived once via the centralized `todayInZone` so it can never disagree with itself around local midnight.
+- Implementation:
+  - New `src/services/app-date.js`: single source of truth for zone-aware calendar dates — `calendarDateInZone(date, tz)`, `todayInZone(tz, now)` (injectable `now`), and `daysBetween(startDate, endDate)` over date-only `YYYY-MM-DD` strings (parsed as UTC midnights → exact day count, no zone ambiguity). `calendarDateInZone`/`buildAnalyzerInput` in `natural-language-intake-service.js` now delegate here; the existing L5-style midnight regression test (Europe/Berlin vs Pacific/Honolulu vs UTC) still passes, confirming behavior-preserving extraction.
+  - New `src/services/expiration-status-service.js`: pure `deriveExpirationStatus(item, referenceDate, soonWindowDays)` returning `expired`/`expiring_soon`/`later`/`no_date`. `date_type` (best_before/use_by) is intentionally **not** part of the classification — it only labels the date; the interface never claims a date alone determines food safety.
+  - `getActiveInventoryForDisplay` now also returns `expirationStatus`, `expirationStatusLabel`, and `expirationStatusClass` (additive; `isUndated` retained). Status is **calculated per request**, never persisted.
+  - View (`src/views/inventory.ejs`) renders a neutral status badge (e.g. "Expiring soon") and a `data-status` attribute for future sort/filter hooks; existing date-type labels ("Best before"/"Use by"/"Date type not specified") carry quality-vs-safety context.
+  - Config: `EXPIRATION_TIMEZONE` and `EXPIRATION_SOON_DAYS` documented in `.env.example` and `README.md`.
+- Tests: `tests/expiration-status.test.js` (pure, no DB) covers `no_date`, `expired`, the 0/1/2/3 → expiring_soon and 4 → later boundary, a `soonWindowDays` override, best_before/use_by parity, and a Berlin-midnight `todayInZone` regression that asserts the calendar date, not UTC.
+- Domain doc (`docs/domain-model.md`) updated to record the confirmed threshold and timezone.
+
+### Ticket 3.2 — Prioritize expiring items in inventory display
+
+- Branch: `feature/m3`, directly on top of Ticket 3.1 (`1d0c80a`).
+- Implementation:
+  - Server-side default ordering (`orderInventoryItemsForDisplay` / `compareInventoryItemsForDisplay` in `expiration-status-service.js`): status rank expired → expiring_soon → later → no_date, then expiration date ascending within each dated group (undated sorted after dated), then deterministic tie-breaks (id ascending, then name ascending, then equal). Combined with sort stability this makes the rendered order independent of insertion/id order.
+  - `getActiveInventoryForDisplay` applies status derivation first, then ordering. No user-facing sort control is added in MVP; the existing client-side `inventory-sort.js` still allows manual re-sorting on top of the new default.
+  - Accessible indicators: every dated-status badge pairs an aria-hidden glyph (`×`, `!`, `·`) with its text label, plus a 2px `currentColor` border and bold weight — state never depends on hue alone. Undated items render no badge (no false signal) and keep their "No expiration date" meta line.
+  - CSS (`src/public/styles.css`) reuses existing color tokens only; badges are `inline-block` so they wrap safely on narrow screens, and no new media query was required (the pre-existing `.inventory-row` rule is unaffected).
+- Tests: unit ordering matrix extended in `tests/expiration-status.test.js` (rank order, date-ascending within groups, tie determinism including reversed input and missing ids, undated-still-visible-last, glyph present for dated statuses / absent for `no_date`) plus a DB-backed route test in `tests/inventory.route.test.js` that inserts four rows deliberately out of priority order and asserts both the rendered sequence (expired → expiring_soon → later → undated) and the glyph+label pairing inside each badge in the served HTML.
+- Verification: full serial suite `node --test --test-concurrency=1` → **123/123 pass, 0 fail** (117 before Ticket 3.2).
+
+
+
+### Ticket 3.3 — Filter and search the inventory
+
+- Branch: `feature/m3`, directly on top of Ticket 3.2 (`022f981`).
+- Parameters (`GET /inventory`): `location` ∈ {pantry, fridge, freezer}, `status` ∈ {expired, expiring_soon, later, no_date}, `q` free-text name search. Route-level parsing validates against these sets; unknown or repeated values are **ignored** rather than rejected so a stale or tampered link can never hide inventory behind an error state; whitespace-only search terms count as no search.
+- Implementation:
+  - Pure `filterInventoryItems(displayItems, filters)` in `src/services/inventory-service.js`, applied after status derivation and display ordering — status is calculated per request and never persisted, so it cannot be part of the SQL WHERE clause. Filters combine with AND; the name term is a trimmed, case-insensitive substring match; an unfiltered call returns a defensive copy. Exported for reuse by the planned Ticket 3.4 overview counts.
+  - The route passes normalized filters, `filtersActive`, `totalCount`, and option metadata to the view; both render sites (success and 500 error) now supply complete template locals so the view can never encounter undefined fields.
+  - View (`inventory.ejs`): GET form with Location select, Status select, name search input, Apply button and Clear link. Active state is preserved via `selected`/`value`. An "Active:" chip summary shows each active filter plus "Showing X of Y item(s)" and a clear-all action. The `no_date` filter option is labeled "No expiration date", matching row meta language (badges intentionally stay unlabeled for undated items).
+  - Distinct empty states: `totalCount === 0` renders the original "No food has been added yet." orientation with no filter form; items exist but none match renders a new dashed-border "No items match the active filters." block offering one-click clearing.
+  - CSS reuses existing tokens and the toolbar wrapping pattern (`.filter-form`, `.filter-chip`, `.active-filters`, `.empty-filtered`); controls reflow safely at narrow widths, no new media query needed.
+- Tests: new pure unit suite `tests/inventory-filter.test.js` (no database): no-filter copy semantics, location filtering, all four statuses including `no_date`, case/trim-insensitive substring search, AND combination, blank-value neutrality. DB-backed route coverage extended in `tests/inventory.route.test.js`: each single filter, preserved selection/chips/counts, combined AND + clear-restores-all, distinct empty states, and invalid-value tolerance.
+- One mid-work defect was caught by the suite and fixed before finalizing: an editor mis-insertion initially placed `filterInventoryItems` inside `getActiveInventoryForDisplay` while leaving the original export block last, so the route saw `filterInventoryItems is not a function`. The service tail was restructured into a single export block including the new function.
+- Verification: full serial suite `node --test --test-concurrency=1` → **135/135 pass, 0 fail** (123 before Ticket 3.3).
+
+### Ticket 3.3 follow-up — remove obsolete client-side sorting
+
+- The M1-era client-side sort (`src/public/inventory-sort.js`, the in-view "Sort by" toolbar, and its `.sort-toolbar` CSS) became obsolete once Ticket 3.2 introduced deterministic server-side expiration-prioritized ordering as the single ordering mechanism on the inventory overview.
+- Documentation evaluated first: the sorting functions were **not** part of the documented product surface (`README.md`, `docs/product-scope.md`, `docs/architecture.md`, `docs/domain-model.md`, `PROJECT_PLAN.md`). The only reference was the Ticket 3.2 engineering-log note that documented `inventory-sort.js` "still allows manual re-sorting on top of the new default" — i.e. they were recorded in the implementation documentation. Because they were documented, the removal was added to the Ticket 3.2 plan & requirements as an additional item and checked after evidence landed.
+- Removal: deleted `src/public/inventory-sort.js`; removed the in-view sort-toolbar buttons and the `<script src="/inventory-sort.js">` tag from `src/views/inventory.ejs`; removed the `.sort-toolbar` CSS block from `src/public/styles.css`. The per-item `data-date`/`data-location` attributes are retained as inert display hooks (not sorting logic). No datasource or service change was required — ordering is fully server-side.
+- Route test updated from asserting the client-side sort controls exist to asserting they are absent while per-item fields and the primary CTA still render.
+- Verification: full serial suite `node --test --test-concurrency=1` → **135/135 pass, 0 fail** (unchanged count; the same test was repurposed).
+### Ticket 3.4 — Add the expiration overview
+
+- Branch: `feature/m3`, directly on top of the Ticket 3.3 follow-up (`b76f495`).
+- Service: pure `computeExpirationCounts(displayItems)` in `src/services/expiration-status-service.js` tallies already-derived `expirationStatus` values and always returns every STATUS key (zeroed), so no persistence query is needed and the counts necessarily agree with the per-item badges shown on the same page.
+- Route: `GET /inventory` computes counts from the **full (unfiltered)** active inventory so the overview is stable regardless of any active filter, and derives `overviewZero` = (no expired and no expiring-soon items). Both render sites (success and 500 error) pass complete template locals.
+- View (`inventory.ejs`): an "Expiration overview" section renders only when the inventory is non-empty, above the filter toolbar. It shows link-cards for Expiring soon, Expired, Later, and No expiration date, each linking to the corresponding filtered inventory view (`/inventory?status=<value>`, reusing Ticket 3.3). A useful zero state ("Nothing is expired or expiring soon.") appears when neither actionable count is > 0. The overview is intentionally not shown on a truly empty inventory (the page-level empty orientation already covers that).
+- CSS (`src/public/styles.css`): `.overview-*` cards reuse existing status color tokens and include a text label (never color-only); the grid uses `auto-fit/minmax` so it reflows safely at narrow widths — no new media query required.
+- Tests:
+  - Unit (`tests/expiration-status.test.js`): `computeExpirationCounts` tallies a mixed set, returns zeroed keys for empty input, and ignores items lacking a status.
+  - DB-backed route (`tests/inventory.route.test.js`): a consistency test inserts four items (one per status), parses the served overview cards, and asserts each card's count equals the number of items its filtered view returns (expired/expiring_soon/later/no_date), plus that the status filter carries through; a zero-state test asserts the reassurance message renders when nothing is expiring and both zero-actions cards are shown; an empty-inventory test asserts the overview is absent while the "No food has been added yet." orientation shows.
+- One mid-work test-defect (a regex that did not account for the label span and closing anchor being on separate lines) was caught by the suite and fixed.
+- Verification: full serial suite `node --test --test-concurrency=1` → **141/141 pass, 0 fail** (135 before Ticket 3.4).
+### M3 release — v0.4.0
+
+- All four M3 tickets accepted and Done (issues #17–#20 closed). Owner authorized release prep and approved `v0.4.0`, including the README current-status correction.
+- Release README/status correction committed on `feature/m3`; full serial suite rerun at that SHA.
+- Release sequence executed per `docs/development-workflow.md` (release responsibilities): explicit `--no-ff` merge of `feature/m3` into `main`; annotated tag `v0.4.0` on the verified `main` release commit, pushed and verified to dereference to that exact commit; GitHub Release published only after remote-tag verification; `main` merged back into `develop` with an explicit `--no-ff` merge commit, pushed and verified to contain the tagged release commit.
+- The M3 milestone was **not** closed and `feature/m4` was **not** created — both await separate owner authorization.
 ## M1 corrections (after first Path A browser walkthrough)
 
 ### Automated tests isolated from the development database
@@ -41,4 +112,4 @@ Milestone 2 — Natural-language batch analysis — completed. The milestone's o
 - Live-model evaluation (`scripts/evaluate-local-model.js`, qwen3:30b-a3b, `referenceDate` 2026-08-25 UTC): all accepted scenarios landed in review batches read back from PostgreSQL; evaluation batches were `cancelled` afterward; no inventory row was ever written.
 - Outcomes: S3 20/20 items; S10/S11 injection defense held; S17 (verbatim) resolved eggs `2026-08-30`, milk `2026-08-26` (explicit calendar date, exact), feta `2026-09-16` this run; S9 bare-temporal-phrase items → `null` dates (L3 resolved via conditional relative-date rule).
 - Owner decisions (Issue #16): L1 accepted narrowly (explicit "frozen" names only); L2 accepted (container-word 422); L3 resolved; L4 accepted; L5 removed (harness `toISOString()` UTC conversion defect — storage and review UI verified correct); L6 accepted; L7 accepted narrowly (approximate duration arithmetic varies ±1 day across runs; explicit calendar/use-by/best-before dates must remain exact — distinct from L5).
-- Release for M2 (merge to `main`, version tag, GitHub Release, milestone close) is deferred pending explicit product-owner release authorization, per Gitflow release handling in `docs/development-workflow.md`. The M2 ticket (2.5) was accepted by the product owner on 2026-08-25 ("All acceptance criteria have been met"): the board item moved to `Done` and `Issue #16` was closed. Latest `feature/m2` HEAD `aa008c8`; M3 is prepared (see below).
+- Release (Gitflow): `feature/m2` (@ `864e1ff`) merged into `main` and `develop` with `Merge feature/m2: M2 — Natural-language batch analysis (release v0.3.0)`; annotated tag **`v0.3.0`** created and pushed; GitHub Release published (`https://github.com/IsyCortex/Pantry/releases/tag/v0.3.0`); M2 milestone closed. `main` and `develop` now both sit at `42d9790`. M3 is prepared on `feature/m3` branched from the released `v0.3.0` state (`42d9790`); Ticket 3.1 (`Issue #17`) exists in `Todo`, not yet implemented.

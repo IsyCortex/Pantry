@@ -144,7 +144,18 @@ The application derives one of:
 - `later`
 - `no_date`
 
-The initial proposal is a fixed three-day `expiring_soon` window, evaluated using the application date in `Europe/Berlin`. The threshold remains a product decision to confirm during M0.
+The initial proposal is a fixed three-day `expiring_soon` window, evaluated using the application date in a dedicated `EXPIRATION_TIMEZONE` (default `Europe/Berlin`), deliberately separate from `ANALYZER_TIMEZONE`. Confirmed for Ticket 3.1 (see `docs/engineering-log.md`): `EXPIRATION_SOON_DAYS` (default `3`) centralizes the boundary and may be re-tuned via environment when product decides to revisit it.
+
+Status is **calculated per request** and never persisted; only `expiration_date` is stored. Classification is purely date-driven (calendar-day arithmetic over date-only `YYYY-MM-DD` values):
+
+- `expired` — expiration_date is before the application "today".
+- `expiring_soon` — expires today or within the next `EXPIRATION_SOON_DAYS` calendar days.
+- `later` — expires after the soon window.
+- `no_date` — no expiration_date set.
+
+Display order mirrors this urgency ranking: `expired`, then `expiring_soon`, then `later`, ordered by date ascending within each dated group; undated items stay visible at the end. Status indicators pair a text label with a glyph and border treatment so state never relies on color alone.
+
+Because `date_type` (`best_before`/`use_by`) is intentionally **not** part of the classification, the interface expresses urgency only: "Best before" signals quality guidance, "Use by" signals a safety-relevant date, and the status badge is never presented as a standalone food-safety verdict. A future per-account/household model should supply the household timezone.
 
 ## Core invariants
 

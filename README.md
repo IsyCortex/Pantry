@@ -49,7 +49,9 @@ Architectural decisions that require trade-off records are maintained as individ
 
 ## Current status
 
-Milestone 0 is complete and released as `v0.1.2`. The implementation stack, foundational architecture, and analyzer-contract specification are accepted for the current development phase.
+Milestone 3 is complete and released as `v0.4.0`. Expiration awareness and inventory navigation are accepted for the current development phase.
+
+Earlier milestone releases: Milestone 2 `v0.3.0` (natural-language batch analysis), Milestone 1 `v0.2.0` (manual inventory and shared batch workflow), and Milestone 0 `v0.1.2` (foundational application architecture and analyzer contract).
 
 ## Local foundation setup
 
@@ -160,6 +162,19 @@ Notes:
 - The extraction prompt forbids inventing missing values (absent data stays JSON `null`, never the string `"null"`), extracts groceries only, and instructs the model to ignore any instructions embedded in the grocery text. Canonical date types are `best_before`, `use_by`, and `unspecified`.
 - Provider, timeout, and parsing failures degrade to the safe recoverable analysis state; the submitted text is preserved for retry or manual continuation, and raw provider details never reach the user.
 - Automated tests never require a running model: they use stubbed HTTP servers and the deterministic fake provider.
+
+## Inventory expiration status
+
+Pantry derives an expiration status for each dated inventory item: `expired`, `expiring soon`, `later`, or `no date`. The reference day is the calendar date in a dedicated timezone (separate from the analyzer timezone), and the `expiring_soon` threshold is a fixed 3-day window. Both are environment settings (see `.env.example`):
+
+```bash
+# IANA timezone for expiration "today" (default Europe/Berlin; separate from ANALYZER_TIMEZONE).
+EXPIRATION_TIMEZONE=Europe/Berlin
+# Calendar days within which a dated item is expiring_soon (default 3).
+EXPIRATION_SOON_DAYS=3
+```
+
+A future per-account/household model will supply the household timezone.
 
 ## M0 implementation record
 

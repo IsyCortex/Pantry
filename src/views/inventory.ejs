@@ -14,21 +14,90 @@
         <section class="error">
           <p><%= errorMessage %></p>
         </section>
-      <% } else if (!items || items.length === 0) { %>
+      <% } else if (!totalCount) { %>
         <section class="empty">
           <p>No food has been added yet.</p>
           <p>Confirmed batches populate the inventory.</p>
           <p>Manual intake is the next step.</p>
         </section>
       <% } else { %>
-        <section class="sort-toolbar" aria-label="Sort inventory">
-          <span>Sort by:</span>
-          <button type="button" data-sort="date" aria-pressed="false">Expiration date</button>
-          <button type="button" data-sort="location" aria-pressed="false">Location</button>
+        <section class="expiry-overview" aria-label="Expiration overview">
+          <h2>Expiration overview</h2>
+          <div class="overview-grid">
+            <a class="overview-card overview-expiring-soon" href="/inventory?status=expiring_soon">
+              <span class="overview-number"><%= counts.expiring_soon %></span>
+              <span class="overview-label">Expiring soon</span>
+            </a>
+            <a class="overview-card overview-expired" href="/inventory?status=expired">
+              <span class="overview-number"><%= counts.expired %></span>
+              <span class="overview-label">Expired</span>
+            </a>
+            <a class="overview-card overview-later" href="/inventory?status=later">
+              <span class="overview-number"><%= counts.later %></span>
+              <span class="overview-label">Later</span>
+            </a>
+            <a class="overview-card overview-no-date" href="/inventory?status=no_date">
+              <span class="overview-number"><%= counts.no_date %></span>
+              <span class="overview-label">No expiration date</span>
+            </a>
+          </div>
+          <% if (overviewZero) { %>
+            <p class="overview-zero" role="status">Nothing is expired or expiring soon.</p>
+          <% } %>
         </section>
+        <section class="filter-toolbar" aria-label="Filter and search inventory">
+          <form method="get" action="/inventory" class="filter-form">
+            <label>
+              Location
+              <select name="location">
+                <option value="">All locations</option>
+                <% locations.forEach((loc) => { %>
+                  <option value="<%= loc %>" <%= filters.location === loc ? 'selected' : '' %>><%= loc %></option>
+                <% }) %>
+              </select>
+            </label>
+            <label>
+              Status
+              <select name="status">
+                <option value="">All statuses</option>
+                <% statusOptions.forEach((option) => { %>
+                  <option value="<%= option.value %>" <%= filters.status === option.value ? 'selected' : '' %>><%= option.label %></option>
+                <% }) %>
+              </select>
+            </label>
+            <label>
+              Search by name
+              <input type="search" name="q" value="<%= filters.q %>" placeholder="e.g. milk">
+            </label>
+            <button type="submit" class="primary-btn">Apply filters</button>
+            <a href="/inventory">Clear</a>
+          </form>
+          <% if (filtersActive) { %>
+            <p class="active-filters">
+              Showing <%= items.length %> of <%= totalCount %> item(s). Active:
+              <% if (filters.location) { %>
+                <span class="filter-chip">Location: <%= filters.location %></span>
+              <% } %>
+              <% if (filters.statusLabel) { %>
+                <span class="filter-chip">Status: <%= filters.statusLabel %></span>
+              <% } %>
+              <% if (filters.q) { %>
+                <span class="filter-chip">Search: &quot;<%= filters.q %>&quot;</span>
+              <% } %>
+              <a href="/inventory">Clear all filters</a>
+            </p>
+          <% } %>
+        </section>
+
+        <% if (!items || items.length === 0) { %>
+          <section class="empty empty-filtered">
+            <p>No items match the active filters.</p>
+            <p>The inventory itself is not empty &mdash; <a href="/inventory">clear all filters</a> to see all <%= totalCount %> item(s).</p>
+          </section>
+        <% } else { %>
         <section class="inventory-list">
           <% items.forEach((item) => { %>
-            <article class="inventory-item" data-date="<%= item.expirationDate || '' %>" data-location="<%= item.location %>">
+            <article class="inventory-item" data-date="<%= item.expirationDate || '' %>" data-location="<%= item.location %>" data-status="<%= item.expirationStatus || '' %>">
               <div class="inventory-row">
                 <strong><%= item.name %></strong>
                 <span><%= item.location %></span>
@@ -42,10 +111,13 @@
               <% } else { %>
                 <p class="meta">No expiration date</p>
               <% } %>
+              <% if (item.expirationStatusLabel) { %>
+                <p class="meta"><span class="status-badge status-<%= item.expirationStatusClass %>"><span class="status-glyph" aria-hidden="true"><%= item.expirationStatusGlyph %></span><%= item.expirationStatusLabel %></span></p>
+              <% } %>
             </article>
           <% }) %>
         </section>
-        <script src="/inventory-sort.js"></script>
+        <% } %>
       <% } %>
     </main>
   </body>
