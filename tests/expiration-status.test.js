@@ -7,7 +7,8 @@ const {
   applyExpirationStatus,
   formatExpirationStatusLabel,
   formatExpirationStatusGlyph,
-  orderInventoryItemsForDisplay
+  orderInventoryItemsForDisplay,
+  computeExpirationCounts
 } = require('../src/services/expiration-status-service');
 const { todayInZone, daysBetween } = require('../src/services/app-date');
 
@@ -204,4 +205,46 @@ test('dated statuses expose a visible glyph beside the label; undated has none',
   assert.equal(typeof formatExpirationStatusGlyph(STATUS.LATER), 'string');
   assert.notEqual(formatExpirationStatusGlyph(STATUS.LATER), '');
   assert.equal(formatExpirationStatusGlyph(STATUS.NO_DATE), null);
+});
+
+// --- Ticket 3.4: expiration overview counts ---
+
+test('computeExpirationCounts tallies each derived status', () => {
+  const items = applyExpirationStatus([
+    { id: 1, name: 'A', expirationDate: '2026-08-01' },
+    { id: 2, name: 'B', expirationDate: '2026-08-27' },
+    { id: 3, name: 'C', expirationDate: '2026-12-01' },
+    { id: 4, name: 'D', expirationDate: null }
+  ], { referenceDate: TODAY, soonWindowDays: WINDOW });
+
+  assert.deepEqual(computeExpirationCounts(items), {
+    expired: 1,
+    expiring_soon: 1,
+    later: 1,
+    no_date: 1
+  });
+});
+
+test('computeExpirationCounts returns zeroed keys for empty input', () => {
+  assert.deepEqual(computeExpirationCounts([]), {
+    expired: 0,
+    expiring_soon: 0,
+    later: 0,
+    no_date: 0
+  });
+});
+
+test('computeExpirationCounts ignores items missing a status', () => {
+  const items = applyExpirationStatus([
+    { id: 1, name: 'A', expirationDate: '2026-08-01' },
+    { id: 2, name: 'B', expirationDate: '2026-12-01' }
+  ], { referenceDate: TODAY, soonWindowDays: WINDOW });
+  items.push({ id: 3, name: 'NoStatus' }); // no expirationStatus key
+
+  assert.deepEqual(computeExpirationCounts(items), {
+    expired: 1,
+    expiring_soon: 0,
+    later: 1,
+    no_date: 0
+  });
 });

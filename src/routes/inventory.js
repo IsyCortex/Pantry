@@ -1,5 +1,6 @@
 const express = require('express');
 const { getActiveInventoryForDisplay, getConfirmedInventoryItem, updateConfirmedInventoryItem, markInventoryItemRemoved, filterInventoryItems } = require('../services/inventory-service');
+const { computeExpirationCounts } = require('../services/expiration-status-service');
 const { VALID_LOCATIONS, VALID_UNITS, VALID_DATE_TYPES } = require('../validation/intake-batch');
 
 const NOTICE_MESSAGES = {
@@ -51,6 +52,10 @@ function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay 
       const allItems = await inventoryLoader();
       const filters = parseInventoryFilters(req.query);
       const items = filterInventoryItems(allItems, filters);
+      // Counts always reflect the full (unfiltered) active inventory so the
+      // overview is stable regardless of any active filters (Ticket 3.4).
+      const counts = computeExpirationCounts(allItems);
+      const overviewZero = counts.expired === 0 && counts.expiring_soon === 0;
       const noticeKey = req.query.notice;
       const notice = noticeKey === 'confirmed'
         ? NOTICE_MESSAGES.confirmed(Number(req.query.created) || 0)
@@ -64,7 +69,9 @@ function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay 
         filtersActive: hasActiveFilters(filters),
         totalCount: allItems.length,
         locations: Array.from(VALID_LOCATIONS),
-        statusOptions: INVENTORY_STATUS_FILTERS
+        statusOptions: INVENTORY_STATUS_FILTERS,
+        counts,
+        overviewZero
       });
     } catch (error) {
       console.error(error.stack || error);
@@ -77,7 +84,9 @@ function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay 
         filtersActive: false,
         totalCount: 0,
         locations: Array.from(VALID_LOCATIONS),
-        statusOptions: INVENTORY_STATUS_FILTERS
+        statusOptions: INVENTORY_STATUS_FILTERS,
+        counts: { expired: 0, expiring_soon: 0, later: 0, no_date: 0 },
+        overviewZero: true
       });
     }
   });

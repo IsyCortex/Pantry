@@ -21,6 +21,30 @@
           <p>Manual intake is the next step.</p>
         </section>
       <% } else { %>
+        <section class="expiry-overview" aria-label="Expiration overview">
+          <h2>Expiration overview</h2>
+          <div class="overview-grid">
+            <a class="overview-card overview-expiring-soon" href="/inventory?status=expiring_soon">
+              <span class="overview-number"><%= counts.expiring_soon %></span>
+              <span class="overview-label">Expiring soon</span>
+            </a>
+            <a class="overview-card overview-expired" href="/inventory?status=expired">
+              <span class="overview-number"><%= counts.expired %></span>
+              <span class="overview-label">Expired</span>
+            </a>
+            <a class="overview-card overview-later" href="/inventory?status=later">
+              <span class="overview-number"><%= counts.later %></span>
+              <span class="overview-label">Later</span>
+            </a>
+            <a class="overview-card overview-no-date" href="/inventory?status=no_date">
+              <span class="overview-number"><%= counts.no_date %></span>
+              <span class="overview-label">No expiration date</span>
+            </a>
+          </div>
+          <% if (overviewZero) { %>
+            <p class="overview-zero" role="status">Nothing is expired or expiring soon.</p>
+          <% } %>
+        </section>
         <section class="filter-toolbar" aria-label="Filter and search inventory">
           <form method="get" action="/inventory" class="filter-form">
             <label>

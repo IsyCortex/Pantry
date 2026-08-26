@@ -63,6 +63,18 @@ Milestone 3 targets expiration awareness over the Pantry inventory.
 - Removal: deleted `src/public/inventory-sort.js`; removed the in-view sort-toolbar buttons and the `<script src="/inventory-sort.js">` tag from `src/views/inventory.ejs`; removed the `.sort-toolbar` CSS block from `src/public/styles.css`. The per-item `data-date`/`data-location` attributes are retained as inert display hooks (not sorting logic). No datasource or service change was required — ordering is fully server-side.
 - Route test updated from asserting the client-side sort controls exist to asserting they are absent while per-item fields and the primary CTA still render.
 - Verification: full serial suite `node --test --test-concurrency=1` → **135/135 pass, 0 fail** (unchanged count; the same test was repurposed).
+### Ticket 3.4 — Add the expiration overview
+
+- Branch: `feature/m3`, directly on top of the Ticket 3.3 follow-up (`b76f495`).
+- Service: pure `computeExpirationCounts(displayItems)` in `src/services/expiration-status-service.js` tallies already-derived `expirationStatus` values and always returns every STATUS key (zeroed), so no persistence query is needed and the counts necessarily agree with the per-item badges shown on the same page.
+- Route: `GET /inventory` computes counts from the **full (unfiltered)** active inventory so the overview is stable regardless of any active filter, and derives `overviewZero` = (no expired and no expiring-soon items). Both render sites (success and 500 error) pass complete template locals.
+- View (`inventory.ejs`): an "Expiration overview" section renders only when the inventory is non-empty, above the filter toolbar. It shows link-cards for Expiring soon, Expired, Later, and No expiration date, each linking to the corresponding filtered inventory view (`/inventory?status=<value>`, reusing Ticket 3.3). A useful zero state ("Nothing is expired or expiring soon.") appears when neither actionable count is > 0. The overview is intentionally not shown on a truly empty inventory (the page-level empty orientation already covers that).
+- CSS (`src/public/styles.css`): `.overview-*` cards reuse existing status color tokens and include a text label (never color-only); the grid uses `auto-fit/minmax` so it reflows safely at narrow widths — no new media query required.
+- Tests:
+  - Unit (`tests/expiration-status.test.js`): `computeExpirationCounts` tallies a mixed set, returns zeroed keys for empty input, and ignores items lacking a status.
+  - DB-backed route (`tests/inventory.route.test.js`): a consistency test inserts four items (one per status), parses the served overview cards, and asserts each card's count equals the number of items its filtered view returns (expired/expiring_soon/later/no_date), plus that the status filter carries through; a zero-state test asserts the reassurance message renders when nothing is expiring and both zero-actions cards are shown; an empty-inventory test asserts the overview is absent while the "No food has been added yet." orientation shows.
+- One mid-work test-defect (a regex that did not account for the label span and closing anchor being on separate lines) was caught by the suite and fixed.
+- Verification: full serial suite `node --test --test-concurrency=1` → **141/141 pass, 0 fail** (135 before Ticket 3.4).
 ## M1 corrections (after first Path A browser walkthrough)
 
 ### Automated tests isolated from the development database

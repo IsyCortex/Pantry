@@ -506,3 +506,96 @@ test('unknown or repeated filter values are ignored instead of hiding inventory'
     server.close();
   }
 });
+// --- Ticket 3.4: expiration overview ---
+
+function countInventoryItems(body) {
+  const matches = body.match(/class="inventory-item"/g);
+  return matches ? matches.length : 0;
+}
+
+test('expiration overview shows immediate counts that match filtered inventory results', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: 'carton', location: 'fridge', expirationDate: '2026-08-20', dateType: 'use_by' }); // expired
+  await insertInventoryItem({ name: 'Yoghurt', quantity: 2, unit: 'package', location: 'fridge', expirationDate: '2026-08-29', dateType: 'best_before' }); // expiring soon (day 3)
+  await insertInventoryItem({ name: 'Cheese', quantity: 1, unit: 'piece', location: 'freezer', expirationDate: '2026-12-01', dateType: 'best_before' }); // later
+  await insertInventoryItem({ name: 'Flour', quantity: 1, unit: 'kg', location: 'pantry', expirationDate: null, dateType: null }); // no_date
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const overviewResponse = await fetch(`http://127.0.0.1:${port}/inventory`);
+    const overview = await overviewResponse.text();
+    assert.equal(overviewResponse.status, 200);
+
+    // Every count card links to the corresponding filtered inventory view.
+    const cardRe = /<a class="overview-card overview-[\w-]+" href="\/inventory\?status=([\w_]+)">\s*<span class="overview-number">(\d+)<\/span>\s*<span class="overview-label">([^<]+)<\/span>\s*<\/a>/g;
+    const links = new Map();
+    let m;
+    while ((m = cardRe.exec(overview)) !== null) {
+      links.set(m[1], { count: Number(m[2]), label: m[3] });
+    }
+
+    // The three required categories are present and immediately visible.
+    assert.ok(links.has('expired'), 'expired card present');
+    assert.ok(links.has('expiring_soon'), 'expiring_soon card present');
+    assert.ok(links.has('no_date'), 'no_date card present');
+    assert.ok(links.has('later'), 'later card present');
+
+    assert.deepEqual(links.get('expired').count, 1);
+    assert.deepEqual(links.get('expiring_soon').count, 1);
+    assert.deepEqual(links.get('later').count, 1);
+    assert.deepEqual(links.get('no_date').count, 1);
+
+    // Each overview count must equal the number of items the targeted
+    // filtered inventory view actually returns (consistency).
+    for (const status of ['expired', 'expiring_soon', 'later', 'no_date']) {
+      const filtered = await fetch(`http://127.0.0.1:${port}/inventory?status=${status}`);
+      const body = await filtered.text();
+      assert.equal(filtered.status, 200);
+      assert.equal(countInventoryItems(body), links.get(status).count,
+        `overview count for '${status}' matches its filtered view`);
+      assert.match(body, new RegExp(`<option value="${status}" selected>`), `filter preserved for ${status}`);
+    }
+  } finally {
+    server.close();
+  }
+});
+
+test('expiration overview renders a useful zero state when nothing is expiring', async () => {
+  await resetInventoryTable();
+  // Only far-future dated and undated items: nothing expired or expiring soon.
+  await insertInventoryItem({ name: 'Cheese', quantity: 1, unit: 'piece', location: 'freezer', expirationDate: '2026-12-01', dateType: 'best_before' });
+  await insertInventoryItem({ name: 'Flour', quantity: 1, unit: 'kg', location: 'pantry', expirationDate: null, dateType: null });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/inventory`);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /Nothing is expired or expiring soon\./);
+    assert.match(body, /class="overview-card overview-expired"/);
+    assert.match(body, /class="overview-card overview-expiring-soon"/);
+  } finally {
+    server.close();
+  }
+});
+
+test('expiration overview is not shown for a truly empty inventory', async () => {
+  await resetInventoryTable();
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/inventory`);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(body, /No food has been added yet\./);
+    assert.doesNotMatch(body, /expiry-overview/);
+  } finally {
+    server.close();
+  }
+});

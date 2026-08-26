@@ -131,6 +131,27 @@ function orderInventoryItemsForDisplay(items) {
   return items.slice().sort(compareInventoryItemsForDisplay);
 }
 
+// Ticket 3.4 — tally display items by derived expiration status. Operates on
+// items that already carry `expirationStatus` (post `applyExpirationStatus`),
+// so it needs no persistence query and always agrees with the per-item badges.
+// Returned object uses the STATUS keys and always includes every key so callers
+// (and the overview template) never deal with missing counts.
+function computeExpirationCounts(displayItems) {
+  const counts = {
+    [STATUS.EXPIRED]: 0,
+    [STATUS.EXPIRING_SOON]: 0,
+    [STATUS.LATER]: 0,
+    [STATUS.NO_DATE]: 0
+  };
+  for (const item of displayItems || []) {
+    const status = item && item.expirationStatus;
+    if (Object.prototype.hasOwnProperty.call(counts, status)) {
+      counts[status] += 1;
+    }
+  }
+  return counts;
+}
+
 // Attach expirationStatus (and neutral label/class) to each display item.
 // By default "today" is the real application date in config.expirationTimezone.
 // `options` let tests inject a fixed `referenceDate` (YYYY-MM-DD) or `now` (a
@@ -160,5 +181,6 @@ module.exports = {
   expirationStatusRank,
   compareInventoryItemsForDisplay,
   orderInventoryItemsForDisplay,
-  applyExpirationStatus
+  applyExpirationStatus,
+  computeExpirationCounts
 };
