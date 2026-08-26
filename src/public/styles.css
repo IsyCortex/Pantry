@@ -186,6 +186,26 @@ button:hover, button:focus { background-color: var(--color-primary-hover); }
 .status-expiring-soon { color: var(--color-warning); background: var(--color-warning-bg); }
 .status-later { color: var(--color-success); background: var(--color-success-bg); }
 
+/* Inventory filter and search toolbar (Ticket 3.3). Reuses the toolbar
+   wrapping pattern so controls reflow safely on narrow screens. */
+.filter-form {
+  display: flex; flex-wrap: wrap; gap: var(--gap-s); align-items: end;
+}
+.filter-form label {
+  display: flex; flex-direction: column; gap: 0.25rem;
+  font-size: 0.9rem; color: var(--color-muted);
+}
+.active-filters {
+  color: var(--color-muted); font-size: 0.9rem; margin-top: 0.5rem;
+}
+.filter-chip {
+  display: inline-block; padding: 0.05rem 0.5rem;
+  border: 1px solid var(--color-border); border-radius: 999px;
+  background: var(--color-surface); color: var(--color-text);
+  font-size: 0.85rem;
+}
+.empty-filtered { border-style: dashed; }
+
 @media (max-width: 48rem) { .inventory-row { flex-direction: column; } }
 
 /* Manual batch editor */

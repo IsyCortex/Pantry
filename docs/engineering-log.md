@@ -41,6 +41,21 @@ Milestone 3 targets expiration awareness over the Pantry inventory.
 - Verification: full serial suite `node --test --test-concurrency=1` → **123/123 pass, 0 fail** (117 before Ticket 3.2).
 
 
+
+### Ticket 3.3 — Filter and search the inventory
+
+- Branch: `feature/m3`, directly on top of Ticket 3.2 (`022f981`).
+- Parameters (`GET /inventory`): `location` ∈ {pantry, fridge, freezer}, `status` ∈ {expired, expiring_soon, later, no_date}, `q` free-text name search. Route-level parsing validates against these sets; unknown or repeated values are **ignored** rather than rejected so a stale or tampered link can never hide inventory behind an error state; whitespace-only search terms count as no search.
+- Implementation:
+  - Pure `filterInventoryItems(displayItems, filters)` in `src/services/inventory-service.js`, applied after status derivation and display ordering — status is calculated per request and never persisted, so it cannot be part of the SQL WHERE clause. Filters combine with AND; the name term is a trimmed, case-insensitive substring match; an unfiltered call returns a defensive copy. Exported for reuse by the planned Ticket 3.4 overview counts.
+  - The route passes normalized filters, `filtersActive`, `totalCount`, and option metadata to the view; both render sites (success and 500 error) now supply complete template locals so the view can never encounter undefined fields.
+  - View (`inventory.ejs`): GET form with Location select, Status select, name search input, Apply button and Clear link. Active state is preserved via `selected`/`value`. An "Active:" chip summary shows each active filter plus "Showing X of Y item(s)" and a clear-all action. The `no_date` filter option is labeled "No expiration date", matching row meta language (badges intentionally stay unlabeled for undated items).
+  - Distinct empty states: `totalCount === 0` renders the original "No food has been added yet." orientation with no filter form; items exist but none match renders a new dashed-border "No items match the active filters." block offering one-click clearing.
+  - CSS reuses existing tokens and the toolbar wrapping pattern (`.filter-form`, `.filter-chip`, `.active-filters`, `.empty-filtered`); controls reflow safely at narrow widths, no new media query needed.
+- Tests: new pure unit suite `tests/inventory-filter.test.js` (no database): no-filter copy semantics, location filtering, all four statuses including `no_date`, case/trim-insensitive substring search, AND combination, blank-value neutrality. DB-backed route coverage extended in `tests/inventory.route.test.js`: each single filter, preserved selection/chips/counts, combined AND + clear-restores-all, distinct empty states, and invalid-value tolerance.
+- One mid-work defect was caught by the suite and fixed before finalizing: an editor mis-insertion initially placed `filterInventoryItems` inside `getActiveInventoryForDisplay` while leaving the original export block last, so the route saw `filterInventoryItems is not a function`. The service tail was restructured into a single export block including the new function.
+- Verification: full serial suite `node --test --test-concurrency=1` → **135/135 pass, 0 fail** (123 before Ticket 3.3).
+
 ## M1 corrections (after first Path A browser walkthrough)
 
 ### Automated tests isolated from the development database

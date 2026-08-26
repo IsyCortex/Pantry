@@ -1,5 +1,5 @@
 const express = require('express');
-const { getActiveInventoryForDisplay, getConfirmedInventoryItem, updateConfirmedInventoryItem, markInventoryItemRemoved } = require('../services/inventory-service');
+const { getActiveInventoryForDisplay, getConfirmedInventoryItem, updateConfirmedInventoryItem, markInventoryItemRemoved, filterInventoryItems } = require('../services/inventory-service');
 const { VALID_LOCATIONS, VALID_UNITS, VALID_DATE_TYPES } = require('../validation/intake-batch');
 
 const NOTICE_MESSAGES = {
@@ -9,24 +9,75 @@ const NOTICE_MESSAGES = {
   confirmed: (created) => `Batch confirmed. ${created} item(s) added to inventory.`
 };
 
+// Ticket 3.3 — user-facing labels for the expiration-status filter options.
+// `no_date` gets an explicit label here because badges intentionally stay
+// unlabeled for undated items; the filter control still needs a name for it,
+// reusing the existing "No expiration date" meta language of the list rows.
+const INVENTORY_STATUS_FILTERS = [
+  { value: 'expired', label: 'Expired' },
+  { value: 'expiring_soon', label: 'Expiring soon' },
+  { value: 'later', label: 'Later' },
+  { value: 'no_date', label: 'No expiration date' }
+];
+const VALID_STATUS_FILTERS = new Set(INVENTORY_STATUS_FILTERS.map((option) => option.value));
+const STATUS_FILTER_LABELS = new Map(INVENTORY_STATUS_FILTERS.map((option) => [option.value, option.label]));
+
+// Normalize query parameters into active inventory filters. Unknown or
+// repeated values are ignored rather than rejected, so a stale or tampered
+// link can never hide inventory behind an error state. Whitespace-only
+// search terms count as "no search".
+function parseInventoryFilters(query = {}) {
+  const single = (value) => (typeof value === 'string' ? value.trim() : '');
+  const location = single(query.location);
+  const status = single(query.status);
+
+  return {
+    location: VALID_LOCATIONS.has(location) ? location : '',
+    status: VALID_STATUS_FILTERS.has(status) ? status : '',
+    q: single(query.q),
+    statusLabel: STATUS_FILTER_LABELS.get(status) || ''
+  };
+}
+
+function hasActiveFilters(filters) {
+  return Boolean(filters.location || filters.status || filters.q);
+}
+
 function createInventoryRouter({ inventoryLoader = getActiveInventoryForDisplay } = {}) {
   const router = express.Router();
 
   router.get('/inventory', async (req, res) => {
     try {
-      const items = await inventoryLoader();
+      const allItems = await inventoryLoader();
+      const filters = parseInventoryFilters(req.query);
+      const items = filterInventoryItems(allItems, filters);
       const noticeKey = req.query.notice;
       const notice = noticeKey === 'confirmed'
         ? NOTICE_MESSAGES.confirmed(Number(req.query.created) || 0)
         : (NOTICE_MESSAGES[noticeKey] || null);
-      res.render('inventory', { title: 'Inventory', items, errorMessage: null, notice });
+      res.render('inventory', {
+        title: 'Inventory',
+        items,
+        errorMessage: null,
+        notice,
+        filters,
+        filtersActive: hasActiveFilters(filters),
+        totalCount: allItems.length,
+        locations: Array.from(VALID_LOCATIONS),
+        statusOptions: INVENTORY_STATUS_FILTERS
+      });
     } catch (error) {
       console.error(error.stack || error);
       res.status(500).render('inventory', {
         title: 'Inventory',
         items: [],
         errorMessage: 'Inventory could not be loaded right now.',
-        notice: null
+        notice: null,
+        filters: { location: '', status: '', q: '', statusLabel: '' },
+        filtersActive: false,
+        totalCount: 0,
+        locations: Array.from(VALID_LOCATIONS),
+        statusOptions: INVENTORY_STATUS_FILTERS
       });
     }
   });

@@ -349,3 +349,159 @@ test('inventory defaults to expiration-prioritized order with accessible badges'
     server.close();
   }
 });
+
+// --- Ticket 3.3: filter and search ---
+
+async function fetchInventory(port, query) {
+  const response = await fetch(`http://127.0.0.1:${port}/inventory${query}`);
+  return { response, body: await response.text() };
+}
+
+test('filters inventory by storage location and keeps the selection visible', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: 'carton', location: 'fridge', expirationDate: '2026-08-01', dateType: 'use_by' });
+  await insertInventoryItem({ name: 'Rice', quantity: 1, unit: 'kg', location: 'pantry', expirationDate: null, dateType: null });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const { response, body } = await fetchInventory(port, '?location=fridge');
+    assert.equal(response.status, 200);
+    assert.match(body, /Milk/);
+    assert.doesNotMatch(body, />Rice</);
+
+    // Active filter is visible: preserved selection + summary chips.
+    assert.match(body, /<option value="fridge" selected>/);
+    assert.match(body, /filter-chip">Location: fridge</);
+    assert.match(body, /Showing 1 of 2 item\(s\)/);
+    assert.match(body, /href="\/inventory">Clear all filters</);
+  } finally {
+    server.close();
+  }
+});
+
+test('filters inventory by derived expiration status', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: 'carton', location: 'fridge', expirationDate: '2026-08-01', dateType: 'use_by' });
+  await insertInventoryItem({ name: 'Cheese', quantity: 1, unit: 'piece', location: 'freezer', expirationDate: '2026-12-01', dateType: 'best_before' });
+  await insertInventoryItem({ name: 'Rice', quantity: 1, unit: 'kg', location: 'pantry', expirationDate: null, dateType: null });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    let { response, body } = await fetchInventory(port, '?status=no_date');
+    assert.equal(response.status, 200);
+    assert.match(body, /Rice/);
+    assert.doesNotMatch(body, />Milk</);
+    assert.doesNotMatch(body, />Cheese</);
+    assert.match(body, /<option value="no_date" selected>/);
+    assert.match(body, /filter-chip">Status: No expiration date</);
+
+    ({ response, body } = await fetchInventory(port, '?status=expired'));
+    assert.equal(response.status, 200);
+    assert.match(body, /Milk/);
+    assert.doesNotMatch(body, />Rice</);
+    assert.doesNotMatch(body, />Cheese</);
+  } finally {
+    server.close();
+  }
+});
+
+test('searches by item name case-insensitively as a substring', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Oat Milk', quantity: 1, unit: 'carton', location: 'fridge', expirationDate: '2026-08-27', dateType: 'use_by' });
+  await insertInventoryItem({ name: 'Yoghurt', quantity: 2, unit: 'package', location: 'fridge', expirationDate: '2026-09-30', dateType: 'best_before' });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    for (const term of ['oat', 'OAT']) {
+      const { response, body } = await fetchInventory(port, `?q=${term}`);
+      assert.equal(response.status, 200);
+      assert.match(body, /Oat Milk/);
+      assert.doesNotMatch(body, />Yoghurt</);
+    }
+
+    // Search term stays visible in the input.
+    const { body } = await fetchInventory(port, '?q=oat');
+    assert.match(body, /value="oat"/);
+    assert.match(body, /filter-chip">Search: &quot;oat&quot;</);
+  } finally {
+    server.close();
+  }
+});
+
+test('combined filters intersect and clearing restores the full list', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: 'carton', location: 'fridge', expirationDate: '2026-08-01', dateType: 'use_by' });
+  await insertInventoryItem({ name: 'Margarine', quantity: 1, unit: 'package', location: 'fridge', expirationDate: '2026-12-01', dateType: 'best_before' });
+  await insertInventoryItem({ name: 'Rice', quantity: 1, unit: 'kg', location: 'pantry', expirationDate: null, dateType: null });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const { response, body } = await fetchInventory(port, '?location=fridge&status=expired&q=mil');
+    assert.equal(response.status, 200);
+    assert.match(body, /Milk/);
+    assert.doesNotMatch(body, />Margarine</);
+    assert.doesNotMatch(body, />Rice</);
+
+    // Clearing via the unfiltered URL shows everything again.
+    const cleared = await fetchInventory(port, '');
+    assert.match(cleared.body, /Milk/);
+    assert.match(cleared.body, /Margarine/);
+    assert.match(cleared.body, /Rice/);
+  } finally {
+    server.close();
+  }
+});
+
+test('empty filtered results are distinct from an empty inventory', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: 'carton', location: 'fridge', expirationDate: '2026-08-01', dateType: 'use_by' });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    // Items exist, but no match -> filtered-empty message, NOT the
+    // "nothing added yet" orientation.
+    const filtered = await fetchInventory(port, '?q=zzz-nothing-matches');
+    assert.equal(filtered.response.status, 200);
+    assert.match(filtered.body, /No items match the active filters\./);
+    assert.doesNotMatch(filtered.body, /No food has been added yet\./);
+
+    // Truly empty inventory -> original orientation, no filter form.
+    await resetInventoryTable();
+    const empty = await fetchInventory(port, '');
+    assert.equal(empty.response.status, 200);
+    assert.match(empty.body, /No food has been added yet\./);
+    assert.doesNotMatch(empty.body, /class="filter-form"/);
+  } finally {
+    server.close();
+  }
+});
+
+test('unknown or repeated filter values are ignored instead of hiding inventory', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: 'carton', location: 'fridge', expirationDate: '2026-08-01', dateType: 'use_by' });
+  await insertInventoryItem({ name: 'Rice', quantity: 1, unit: 'kg', location: 'pantry', expirationDate: null, dateType: null });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const { response, body } = await fetchInventory(port, '?location=junk&status=bogus');
+    assert.equal(response.status, 200);
+    assert.match(body, /Milk/);
+    assert.match(body, /Rice/);
+    assert.doesNotMatch(body, /selected>/);
+    assert.doesNotMatch(body, /filter-chip/);
+  } finally {
+    server.close();
+  }
+});

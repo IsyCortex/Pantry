@@ -14,13 +14,63 @@
         <section class="error">
           <p><%= errorMessage %></p>
         </section>
-      <% } else if (!items || items.length === 0) { %>
+      <% } else if (!totalCount) { %>
         <section class="empty">
           <p>No food has been added yet.</p>
           <p>Confirmed batches populate the inventory.</p>
           <p>Manual intake is the next step.</p>
         </section>
       <% } else { %>
+        <section class="filter-toolbar" aria-label="Filter and search inventory">
+          <form method="get" action="/inventory" class="filter-form">
+            <label>
+              Location
+              <select name="location">
+                <option value="">All locations</option>
+                <% locations.forEach((loc) => { %>
+                  <option value="<%= loc %>" <%= filters.location === loc ? 'selected' : '' %>><%= loc %></option>
+                <% }) %>
+              </select>
+            </label>
+            <label>
+              Status
+              <select name="status">
+                <option value="">All statuses</option>
+                <% statusOptions.forEach((option) => { %>
+                  <option value="<%= option.value %>" <%= filters.status === option.value ? 'selected' : '' %>><%= option.label %></option>
+                <% }) %>
+              </select>
+            </label>
+            <label>
+              Search by name
+              <input type="search" name="q" value="<%= filters.q %>" placeholder="e.g. milk">
+            </label>
+            <button type="submit" class="primary-btn">Apply filters</button>
+            <a href="/inventory">Clear</a>
+          </form>
+          <% if (filtersActive) { %>
+            <p class="active-filters">
+              Showing <%= items.length %> of <%= totalCount %> item(s). Active:
+              <% if (filters.location) { %>
+                <span class="filter-chip">Location: <%= filters.location %></span>
+              <% } %>
+              <% if (filters.statusLabel) { %>
+                <span class="filter-chip">Status: <%= filters.statusLabel %></span>
+              <% } %>
+              <% if (filters.q) { %>
+                <span class="filter-chip">Search: &quot;<%= filters.q %>&quot;</span>
+              <% } %>
+              <a href="/inventory">Clear all filters</a>
+            </p>
+          <% } %>
+        </section>
+
+        <% if (!items || items.length === 0) { %>
+          <section class="empty empty-filtered">
+            <p>No items match the active filters.</p>
+            <p>The inventory itself is not empty &mdash; <a href="/inventory">clear all filters</a> to see all <%= totalCount %> item(s).</p>
+          </section>
+        <% } else { %>
         <section class="sort-toolbar" aria-label="Sort inventory">
           <span>Sort by:</span>
           <button type="button" data-sort="date" aria-pressed="false">Expiration date</button>
@@ -49,6 +99,7 @@
           <% }) %>
         </section>
         <script src="/inventory-sort.js"></script>
+        <% } %>
       <% } %>
     </main>
   </body>

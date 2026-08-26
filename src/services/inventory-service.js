@@ -115,10 +115,32 @@ async function getActiveInventoryForDisplay() {
   return orderInventoryItemsForDisplay(applyExpirationStatus(displayItems));
 }
 
+// Ticket 3.3 — filter/search over ordered display items (AND-combined).
+// Runs after expiration-status derivation because status is calculated per
+// request and never persisted, so it cannot be part of the SQL WHERE clause.
+// Route-level parsing guarantees shape; here every filter is optional and
+// empty values simply do not constrain the result.
+function filterInventoryItems(displayItems, filters = {}) {
+  const { location = '', status = '', q = '' } = filters || {};
+  const needle = String(q).trim().toLowerCase();
+
+  if (!location && !status && !needle) {
+    return displayItems.slice();
+  }
+
+  return displayItems.filter((item) => {
+    if (location && item.location !== location) return false;
+    if (status && item.expirationStatus !== status) return false;
+    if (needle && !String(item.name || '').toLowerCase().includes(needle)) return false;
+    return true;
+  });
+}
+
 module.exports = {
   createConfirmedInventoryItem,
   getConfirmedInventoryItem,
   updateConfirmedInventoryItem,
   markInventoryItemRemoved,
-  getActiveInventoryForDisplay
+  getActiveInventoryForDisplay,
+  filterInventoryItems
 };
