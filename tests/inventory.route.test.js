@@ -315,3 +315,37 @@ test('inventory overview exposes client-side sort controls and sortable item fie
     server.close();
   }
 });
+
+test('inventory defaults to expiration-prioritized order with accessible badges', async () => {
+  await resetInventoryTable();
+  // Inserted deliberately out of priority order; ids alone must not decide.
+  await insertInventoryItem({ name: 'Zucchini', quantity: 1, unit: 'piece', location: 'fridge', expirationDate: '2026-09-20', dateType: 'best_before', lifecycleStatus: 'active' });
+  await insertInventoryItem({ name: 'Yoghurt', quantity: 2, unit: 'package', location: 'fridge', expirationDate: '2026-08-27', dateType: 'use_by', lifecycleStatus: 'active' });
+  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: 'carton', location: 'fridge', expirationDate: '2026-08-20', dateType: 'use_by', lifecycleStatus: 'active' });
+  await insertInventoryItem({ name: 'Flour', quantity: 1, unit: 'kg', location: 'pantry', expirationDate: null, dateType: null, lifecycleStatus: 'active' });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/inventory`);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+
+    // Expired (Milk) -> expiring_soon (Yoghurt) -> later (Zucchini);
+    // undated Flour stays visible, last.
+    const positionOf = (name) => body.indexOf(name);
+    assert.ok(positionOf('Milk') > -1, 'expired item rendered');
+    assert.ok(positionOf('Milk') < positionOf('Yoghurt'), 'expired before soon');
+    assert.ok(positionOf('Yoghurt') < positionOf('Zucchini'), 'soon before later');
+    assert.ok(positionOf('Zucchini') < positionOf('Flour'), 'undated last but present');
+
+    // Status indicators do not rely on color alone: each badge pairs a glyph
+    // with its text label inside the same element.
+    assert.match(body, /status-badge status-expired[^>]*><span class="status-glyph" aria-hidden="true">[^<]+<\/span>Expired</);
+    assert.match(body, /status-badge status-expiring-soon[^>]*><span class="status-glyph" aria-hidden="true">[^<]+<\/span>Expiring soon</);
+    assert.match(body, /status-badge status-later[^>]*><span class="status-glyph" aria-hidden="true">[^<]+<\/span>Later</);
+  } finally {
+    server.close();
+  }
+});

@@ -1,6 +1,6 @@
 const { createInventoryItem, getInventoryItemById, updateInventoryItem, transitionInventoryLifecycle, listActiveInventoryItems } = require('../db/inventory');
 const { validateInventoryItem } = require('../validation/inventory');
-const { applyExpirationStatus } = require('./expiration-status-service');
+const { applyExpirationStatus, orderInventoryItemsForDisplay } = require('./expiration-status-service');
 
 async function createConfirmedInventoryItem(input, client) {
   const validation = validateInventoryItem(input);
@@ -108,8 +108,11 @@ async function getActiveInventoryForDisplay() {
   }));
 
   // Status is calculated per request, never persisted. Uses the centralized,
-  // injectable application clock in config.expirationTimezone (Europe/Berlin).
-  return applyExpirationStatus(displayItems);
+  // injectable application clock in config.expirationTimezone (Europe/Berlin),
+  // then applies the expiration-prioritized display order (Ticket 3.2):
+  // expired -> expiring_soon -> later, date ascending within each group, with
+  // undated items kept visible at the end.
+  return orderInventoryItemsForDisplay(applyExpirationStatus(displayItems));
 }
 
 module.exports = {

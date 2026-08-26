@@ -153,6 +153,8 @@ Status is **calculated per request** and never persisted; only `expiration_date`
 - `later` — expires after the soon window.
 - `no_date` — no expiration_date set.
 
+Display order mirrors this urgency ranking: `expired`, then `expiring_soon`, then `later`, ordered by date ascending within each dated group; undated items stay visible at the end. Status indicators pair a text label with a glyph and border treatment so state never relies on color alone.
+
 Because `date_type` (`best_before`/`use_by`) is intentionally **not** part of the classification, the interface expresses urgency only: "Best before" signals quality guidance, "Use by" signals a safety-relevant date, and the status badge is never presented as a standalone food-safety verdict. A future per-account/household model should supply the household timezone.
 
 ## Core invariants

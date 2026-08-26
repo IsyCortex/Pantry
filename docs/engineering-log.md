@@ -29,6 +29,18 @@ Milestone 3 targets expiration awareness over the Pantry inventory.
 - Tests: `tests/expiration-status.test.js` (pure, no DB) covers `no_date`, `expired`, the 0/1/2/3 → expiring_soon and 4 → later boundary, a `soonWindowDays` override, best_before/use_by parity, and a Berlin-midnight `todayInZone` regression that asserts the calendar date, not UTC.
 - Domain doc (`docs/domain-model.md`) updated to record the confirmed threshold and timezone.
 
+### Ticket 3.2 — Prioritize expiring items in inventory display
+
+- Branch: `feature/m3`, directly on top of Ticket 3.1 (`1d0c80a`).
+- Implementation:
+  - Server-side default ordering (`orderInventoryItemsForDisplay` / `compareInventoryItemsForDisplay` in `expiration-status-service.js`): status rank expired → expiring_soon → later → no_date, then expiration date ascending within each dated group (undated sorted after dated), then deterministic tie-breaks (id ascending, then name ascending, then equal). Combined with sort stability this makes the rendered order independent of insertion/id order.
+  - `getActiveInventoryForDisplay` applies status derivation first, then ordering. No user-facing sort control is added in MVP; the existing client-side `inventory-sort.js` still allows manual re-sorting on top of the new default.
+  - Accessible indicators: every dated-status badge pairs an aria-hidden glyph (`×`, `!`, `·`) with its text label, plus a 2px `currentColor` border and bold weight — state never depends on hue alone. Undated items render no badge (no false signal) and keep their "No expiration date" meta line.
+  - CSS (`src/public/styles.css`) reuses existing color tokens only; badges are `inline-block` so they wrap safely on narrow screens, and no new media query was required (the pre-existing `.inventory-row` rule is unaffected).
+- Tests: unit ordering matrix extended in `tests/expiration-status.test.js` (rank order, date-ascending within groups, tie determinism including reversed input and missing ids, undated-still-visible-last, glyph present for dated statuses / absent for `no_date`) plus a DB-backed route test in `tests/inventory.route.test.js` that inserts four rows deliberately out of priority order and asserts both the rendered sequence (expired → expiring_soon → later → undated) and the glyph+label pairing inside each badge in the served HTML.
+- Verification: full serial suite `node --test --test-concurrency=1` → **123/123 pass, 0 fail** (117 before Ticket 3.2).
+
+
 ## M1 corrections (after first Path A browser walkthrough)
 
 ### Automated tests isolated from the development database

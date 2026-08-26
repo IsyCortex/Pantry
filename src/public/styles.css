@@ -18,6 +18,7 @@
   --color-success-bg: #eafff4;
   --color-success-border: #2a7a4b;
   --color-warning: #7c3a00;
+  --color-warning-bg: #fff7ed;
   --radius: 0.5rem;
   --gap-s: 0.5rem;
   --gap: 1rem;
@@ -169,6 +170,22 @@ button:hover, button:focus { background-color: var(--color-primary-hover); }
   align-items: baseline; flex-wrap: wrap;
 }
 .meta { color: var(--color-muted); margin-top: 0.25rem; font-size: 0.9rem; }
+
+/* Expiration status badges (Ticket 3.2). State is conveyed by text label +
+   glyph + border weight in addition to color, so it never relies on hue
+   alone. Inline-block keeps badges wrapping safely on narrow screens. */
+.status-badge {
+  display: inline-block;
+  padding: 0.05rem 0.55rem;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.status-glyph { margin-right: 0.3rem; }
+.status-expired { color: var(--color-error); background: var(--color-error-bg); }
+.status-expiring-soon { color: var(--color-warning); background: var(--color-warning-bg); }
+.status-later { color: var(--color-success); background: var(--color-success-bg); }
+
 @media (max-width: 48rem) { .inventory-row { flex-direction: column; } }
 
 /* Manual batch editor */

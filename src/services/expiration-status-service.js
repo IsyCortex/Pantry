@@ -39,6 +39,17 @@ const STATUS_CLASSES = {
   [STATUS.NO_DATE]: null
 };
 
+// Visible glyphs rendered beside each badge label (aria-hidden in the view).
+// The text label stays the accessible cue; the glyph adds a second non-color
+// signal so state never depends on color alone (Ticket 3.2). Latin-1 glyphs
+// are used deliberately so they render across common system fonts.
+const STATUS_GLYPHS = {
+  [STATUS.EXPIRED]: '×',
+  [STATUS.EXPIRING_SOON]: '!',
+  [STATUS.LATER]: '·',
+  [STATUS.NO_DATE]: null
+};
+
 // Pure: derive status from a date-only expirationDate and a date-only
 // referenceDate (both YYYY-MM-DD) and an explicit soonWindowDays.
 function deriveExpirationStatus(item, referenceDate, soonWindowDays = config.expirationSoonDays) {
@@ -65,6 +76,61 @@ function formatExpirationStatusClass(status) {
   return STATUS_CLASSES[status] || null;
 }
 
+function formatExpirationStatusGlyph(status) {
+  return STATUS_GLYPHS[status] || null;
+}
+
+// Display priority (Ticket 3.2): most urgent first, undated last-but-visible.
+const STATUS_DISPLAY_ORDER = {
+  [STATUS.EXPIRED]: 0,
+  [STATUS.EXPIRING_SOON]: 1,
+  [STATUS.LATER]: 2,
+  [STATUS.NO_DATE]: 3
+};
+
+function expirationStatusRank(status) {
+  return Object.prototype.hasOwnProperty.call(STATUS_DISPLAY_ORDER, status)
+    ? STATUS_DISPLAY_ORDER[status]
+    : STATUS_DISPLAY_ORDER[STATUS.NO_DATE];
+}
+
+// Deterministic comparator over display items:
+//   1. status rank (expired -> expiring_soon -> later -> no_date)
+//   2. expiration date ascending within each dated group
+//   3. id ascending, then name ascending (stable final fallback)
+function compareInventoryItemsForDisplay(a, b) {
+  const rankDiff = expirationStatusRank(a && a.expirationStatus) -
+    expirationStatusRank(b && b.expirationStatus);
+  if (rankDiff !== 0) {
+    return rankDiff;
+  }
+
+  const aDate = (a && a.expirationDate) || '';
+  const bDate = (b && b.expirationDate) || '';
+  if (aDate !== bDate) {
+    if (!aDate) return 1;
+    if (!bDate) return -1;
+    return aDate < bDate ? -1 : 1;
+  }
+
+  const aId = Number.isFinite(a && a.id) ? a.id : Number.POSITIVE_INFINITY;
+  const bId = Number.isFinite(b && b.id) ? b.id : Number.POSITIVE_INFINITY;
+  if (aId !== bId) {
+    return aId - bId;
+  }
+
+  const aName = (a && a.name) || '';
+  const bName = (b && b.name) || '';
+  if (aName !== bName) {
+    return aName < bName ? -1 : 1;
+  }
+  return 0;
+}
+
+function orderInventoryItemsForDisplay(items) {
+  return items.slice().sort(compareInventoryItemsForDisplay);
+}
+
 // Attach expirationStatus (and neutral label/class) to each display item.
 // By default "today" is the real application date in config.expirationTimezone.
 // `options` let tests inject a fixed `referenceDate` (YYYY-MM-DD) or `now` (a
@@ -79,7 +145,8 @@ function applyExpirationStatus(displayItems, options = {}) {
       ...item,
       expirationStatus: status,
       expirationStatusLabel: formatExpirationStatusLabel(status),
-      expirationStatusClass: formatExpirationStatusClass(status)
+      expirationStatusClass: formatExpirationStatusClass(status),
+      expirationStatusGlyph: formatExpirationStatusGlyph(status)
     };
   });
 }
@@ -89,5 +156,9 @@ module.exports = {
   deriveExpirationStatus,
   formatExpirationStatusLabel,
   formatExpirationStatusClass,
+  formatExpirationStatusGlyph,
+  expirationStatusRank,
+  compareInventoryItemsForDisplay,
+  orderInventoryItemsForDisplay,
   applyExpirationStatus
 };

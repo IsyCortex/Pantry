@@ -5,7 +5,9 @@ const {
   STATUS,
   deriveExpirationStatus,
   applyExpirationStatus,
-  formatExpirationStatusLabel
+  formatExpirationStatusLabel,
+  formatExpirationStatusGlyph,
+  orderInventoryItemsForDisplay
 } = require('../src/services/expiration-status-service');
 const { todayInZone, daysBetween } = require('../src/services/app-date');
 
@@ -126,4 +128,80 @@ test('status labels are neutral user-facing text', () => {
   assert.equal(formatExpirationStatusLabel(STATUS.EXPIRING_SOON), 'Expiring soon');
   assert.equal(formatExpirationStatusLabel(STATUS.LATER), 'Later');
   assert.equal(formatExpirationStatusLabel(STATUS.NO_DATE), null);
+});
+
+// --- Ticket 3.2: expiration-prioritized display ordering ---
+
+test('display order puts expired first, then expiring_soon, later, undated last', () => {
+  const items = [
+    { id: 4, name: 'Rice', expirationDate: null },
+    { id: 3, name: 'Cheese', expirationDate: '2026-09-10' },
+    { id: 2, name: 'Yoghurt', expirationDate: '2026-08-27' },
+    { id: 1, name: 'Milk', expirationDate: '2026-08-20' }
+  ];
+  const ordered = orderInventoryItemsForDisplay(
+    applyExpirationStatus(items, { referenceDate: TODAY, soonWindowDays: WINDOW })
+  );
+  assert.deepEqual(ordered.map((i) => i.name), ['Milk', 'Yoghurt', 'Cheese', 'Rice']);
+});
+
+test('items inside a dated group are ordered by date ascending', () => {
+  const items = [
+    { id: 1, name: 'Late', expirationDate: '2026-12-01' },
+    { id: 2, name: 'SoonerLater', expirationDate: '2026-09-05' },
+    { id: 3, name: 'SoonB', expirationDate: '2026-08-29' },
+    { id: 4, name: 'SoonA', expirationDate: '2026-08-27' },
+    { id: 5, name: 'OldA', expirationDate: '2026-06-01' },
+    { id: 6, name: 'OldB', expirationDate: '2026-07-15' }
+  ];
+  const ordered = orderInventoryItemsForDisplay(
+    applyExpirationStatus(items, { referenceDate: TODAY, soonWindowDays: WINDOW })
+  );
+  assert.deepEqual(
+    ordered.map((i) => i.name),
+    ['OldA', 'OldB', 'SoonA', 'SoonB', 'SoonerLater', 'Late']
+  );
+});
+
+test('ordering is deterministic on ties (id, then name; input order irrelevant)', () => {
+  const sameDate = [
+    { id: 9, name: 'B', expirationDate: '2026-08-28' },
+    { id: 2, name: 'C', expirationDate: '2026-08-28' },
+    { id: 5, name: 'A', expirationDate: '2026-08-28' }
+  ];
+  let ordered = orderInventoryItemsForDisplay(sameDate);
+  assert.deepEqual(ordered.map((i) => i.id), [2, 5, 9]);
+  ordered = orderInventoryItemsForDisplay(sameDate.slice().reverse());
+  assert.deepEqual(ordered.map((i) => i.id), [2, 5, 9]);
+
+  const noIds = [
+    { name: 'Pear', expirationDate: '2026-08-28' },
+    { name: 'Apple', expirationDate: '2026-08-28' }
+  ];
+  assert.deepEqual(
+    orderInventoryItemsForDisplay(noIds).map((i) => i.name),
+    ['Apple', 'Pear']
+  );
+});
+
+test('undated items stay discoverable at the end of the list', () => {
+  const items = [
+    { id: 1, name: 'Rice', expirationDate: null },
+    { id: 2, name: 'Flour', expirationDate: null },
+    { id: 3, name: 'Milk', expirationDate: '2026-08-20' }
+  ];
+  const ordered = orderInventoryItemsForDisplay(
+    applyExpirationStatus(items, { referenceDate: TODAY, soonWindowDays: WINDOW })
+  );
+  assert.deepEqual(ordered.map((i) => i.name), ['Milk', 'Rice', 'Flour']);
+});
+
+test('dated statuses expose a visible glyph beside the label; undated has none', () => {
+  assert.equal(typeof formatExpirationStatusGlyph(STATUS.EXPIRED), 'string');
+  assert.notEqual(formatExpirationStatusGlyph(STATUS.EXPIRED), '');
+  assert.equal(typeof formatExpirationStatusGlyph(STATUS.EXPIRING_SOON), 'string');
+  assert.notEqual(formatExpirationStatusGlyph(STATUS.EXPIRING_SOON), '');
+  assert.equal(typeof formatExpirationStatusGlyph(STATUS.LATER), 'string');
+  assert.notEqual(formatExpirationStatusGlyph(STATUS.LATER), '');
+  assert.equal(formatExpirationStatusGlyph(STATUS.NO_DATE), null);
 });

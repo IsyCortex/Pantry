@@ -43,7 +43,7 @@
                 <p class="meta">No expiration date</p>
               <% } %>
               <% if (item.expirationStatusLabel) { %>
-                <p class="meta"><span class="status-badge status-<%= item.expirationStatusClass %>"><%= item.expirationStatusLabel %></span></p>
+                <p class="meta"><span class="status-badge status-<%= item.expirationStatusClass %>"><span class="status-glyph" aria-hidden="true"><%= item.expirationStatusGlyph %></span><%= item.expirationStatusLabel %></span></p>
               <% } %>
             </article>
           <% }) %>
