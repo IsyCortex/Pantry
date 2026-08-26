@@ -37,7 +37,23 @@ module.exports = {
   // IANA timezone the application reports to analyzers. The analyzer reference
   // date is derived inside this zone, so the two values can never disagree
   // around local midnight.
-  get analyzerTimezone() {
+    get analyzerTimezone() {
     return process.env.ANALYZER_TIMEZONE || 'UTC';
+  },
+  // IANA timezone used to derive the inventory expiration-status "today"
+  // (Ticket 3.1). Deliberately SEPARATE from analyzerTimezone: analyzer context
+  // (Ticket 2 / docs/input-pipeline.md) and inventory expiration have separate
+  // responsibilities. A future per-account/household model should supply this
+  // value; for now it is the project-wide MVP default of Europe/Berlin, per
+  // docs/domain-model.md.
+  get expirationTimezone() {
+    return process.env.EXPIRATION_TIMEZONE || 'Europe/Berlin';
+  },
+  // Calendar days within which a dated item is flagged `expiring_soon`
+  // (expires today or within these N days). Fixed 3-day window confirmed for
+  // Ticket 3.1; centralized so the boundary can be re-tuned via env without UI
+  // changes (no settings UI in MVP).
+  get expirationSoonDays() {
+    return Number(process.env.EXPIRATION_SOON_DAYS || 3);
   }
 };

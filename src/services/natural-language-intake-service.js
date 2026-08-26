@@ -5,6 +5,7 @@
 
 const pool = require('../db/pool');
 const config = require('../config');
+const { calendarDateInZone, todayInZone } = require('./app-date');
 const {
   createNaturalLanguageIntakeBatch,
   replaceDraftBatchItems,
@@ -91,26 +92,17 @@ function withAnalysisTimeout(promise, timeoutMs) {
 // The application owns analyzer context (docs/input-pipeline.md): providers
 // never infer date, timezone, or locale themselves.
 //
-// The timezone comes from configuration (ANALYZER_TIMEZONE, default UTC) and
-// the reference date is derived as the calendar date *inside that timezone*,
-// so the two can never disagree around local midnight — a naive UTC date
-// slice would report the previous day there.
-function calendarDateInZone(date, timezone) {
-  // en-CA formats as YYYY-MM-DD, matching the contract's ISO date requirement.
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(date);
-}
+// Calendar-date derivation is centralized in `app-date` (Ticket 3.1) so the
+// analyzer reference date here and the inventory expiration status share one
+// definition of "today" and can never disagree around local midnight — a naive
+// UTC date slice would report the previous day there.
 
 function buildAnalyzerInput(rawText, now = new Date()) {
   const timezone = config.analyzerTimezone;
 
   return {
     rawText,
-    referenceDate: calendarDateInZone(now, timezone),
+    referenceDate: todayInZone(timezone, now),
     timezone,
     locale: 'en-US'
   };
@@ -198,5 +190,6 @@ module.exports = {
   ANALYSIS_ERROR_CODES,
   analyzeAndCreateReviewBatch,
   buildAnalyzerInput,
-  calendarDateInZone
+  calendarDateInZone,
+  todayInZone
 };

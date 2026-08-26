@@ -1,5 +1,6 @@
 const { createInventoryItem, getInventoryItemById, updateInventoryItem, transitionInventoryLifecycle, listActiveInventoryItems } = require('../db/inventory');
 const { validateInventoryItem } = require('../validation/inventory');
+const { applyExpirationStatus, orderInventoryItemsForDisplay } = require('./expiration-status-service');
 
 async function createConfirmedInventoryItem(input, client) {
   const validation = validateInventoryItem(input);
@@ -95,7 +96,7 @@ function formatCalendarDate(dateValue) {
 async function getActiveInventoryForDisplay() {
   const items = await listActiveInventoryItems();
 
-  return items.map((item) => ({
+  const displayItems = items.map((item) => ({
     id: item.id,
     name: item.name,
     location: item.location,
@@ -105,6 +106,34 @@ async function getActiveInventoryForDisplay() {
     dateTypeLabel: item.expiration_date ? formatDateType(item.date_type) : null,
     isUndated: item.expiration_date == null
   }));
+
+  // Status is calculated per request, never persisted. Uses the centralized,
+  // injectable application clock in config.expirationTimezone (Europe/Berlin),
+  // then applies the expiration-prioritized display order (Ticket 3.2):
+  // expired -> expiring_soon -> later, date ascending within each group, with
+  // undated items kept visible at the end.
+  return orderInventoryItemsForDisplay(applyExpirationStatus(displayItems));
+}
+
+// Ticket 3.3 — filter/search over ordered display items (AND-combined).
+// Runs after expiration-status derivation because status is calculated per
+// request and never persisted, so it cannot be part of the SQL WHERE clause.
+// Route-level parsing guarantees shape; here every filter is optional and
+// empty values simply do not constrain the result.
+function filterInventoryItems(displayItems, filters = {}) {
+  const { location = '', status = '', q = '' } = filters || {};
+  const needle = String(q).trim().toLowerCase();
+
+  if (!location && !status && !needle) {
+    return displayItems.slice();
+  }
+
+  return displayItems.filter((item) => {
+    if (location && item.location !== location) return false;
+    if (status && item.expirationStatus !== status) return false;
+    if (needle && !String(item.name || '').toLowerCase().includes(needle)) return false;
+    return true;
+  });
 }
 
 module.exports = {
@@ -112,5 +141,6 @@ module.exports = {
   getConfirmedInventoryItem,
   updateConfirmedInventoryItem,
   markInventoryItemRemoved,
-  getActiveInventoryForDisplay
+  getActiveInventoryForDisplay,
+  filterInventoryItems
 };
