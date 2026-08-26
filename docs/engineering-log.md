@@ -56,6 +56,13 @@ Milestone 3 targets expiration awareness over the Pantry inventory.
 - One mid-work defect was caught by the suite and fixed before finalizing: an editor mis-insertion initially placed `filterInventoryItems` inside `getActiveInventoryForDisplay` while leaving the original export block last, so the route saw `filterInventoryItems is not a function`. The service tail was restructured into a single export block including the new function.
 - Verification: full serial suite `node --test --test-concurrency=1` → **135/135 pass, 0 fail** (123 before Ticket 3.3).
 
+### Ticket 3.3 follow-up — remove obsolete client-side sorting
+
+- The M1-era client-side sort (`src/public/inventory-sort.js`, the in-view "Sort by" toolbar, and its `.sort-toolbar` CSS) became obsolete once Ticket 3.2 introduced deterministic server-side expiration-prioritized ordering as the single ordering mechanism on the inventory overview.
+- Documentation evaluated first: the sorting functions were **not** part of the documented product surface (`README.md`, `docs/product-scope.md`, `docs/architecture.md`, `docs/domain-model.md`, `PROJECT_PLAN.md`). The only reference was the Ticket 3.2 engineering-log note that documented `inventory-sort.js` "still allows manual re-sorting on top of the new default" — i.e. they were recorded in the implementation documentation. Because they were documented, the removal was added to the Ticket 3.2 plan & requirements as an additional item and checked after evidence landed.
+- Removal: deleted `src/public/inventory-sort.js`; removed the in-view sort-toolbar buttons and the `<script src="/inventory-sort.js">` tag from `src/views/inventory.ejs`; removed the `.sort-toolbar` CSS block from `src/public/styles.css`. The per-item `data-date`/`data-location` attributes are retained as inert display hooks (not sorting logic). No datasource or service change was required — ordering is fully server-side.
+- Route test updated from asserting the client-side sort controls exist to asserting they are absent while per-item fields and the primary CTA still render.
+- Verification: full serial suite `node --test --test-concurrency=1` → **135/135 pass, 0 fail** (unchanged count; the same test was repurposed).
 ## M1 corrections (after first Path A browser walkthrough)
 
 ### Automated tests isolated from the development database

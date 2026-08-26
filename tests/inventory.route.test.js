@@ -285,7 +285,7 @@ test('removal confirmation redirects back to inventory with a success notice', a
   }
 });
 
-test('inventory overview exposes client-side sort controls and sortable item fields', async () => {
+test('inventory overview renders per-item fields and primary CTA without obsolete client-side sort controls', async () => {
   await resetInventoryTable();
   await insertInventoryItem({ name: 'Pears', quantity: 3, unit: 'piece', location: 'pantry', expirationDate: '2026-08-30', dateType: 'best_before', lifecycleStatus: 'active' });
   await insertInventoryItem({ name: 'Apples', quantity: 5, unit: 'piece', location: 'fridge', expirationDate: '2026-08-25', dateType: 'best_before', lifecycleStatus: 'active' });
@@ -298,12 +298,13 @@ test('inventory overview exposes client-side sort controls and sortable item fie
     const response = await fetch(`http://127.0.0.1:${port}/inventory`);
     const body = await response.text();
     assert.equal(response.status, 200);
-    // Sort controls (client-only; no query params involved).
-    assert.match(body, /data-sort="date"/);
-    assert.match(body, /data-sort="location"/);
-    assert.match(body, /inventory-sort\.js/);
-    // Per-item sortable fields.
-        assert.match(body, /data-date="2026-08-25"/);
+    // The obsolete client-side sort controls and script are removed; the
+    // server-side expiration-prioritized ordering (Ticket 3.2) is now the
+    // single ordering mechanism on the overview.
+    assert.doesNotMatch(body, /data-sort=/);
+    assert.doesNotMatch(body, /inventory-sort\.js/);
+    // Per-item fields still render for display (retained as inert hooks).
+    assert.match(body, /data-date="2026-08-25"/);
     assert.match(body, /data-date="2026-08-30"/);
     assert.match(body, /data-date=""/);
     assert.match(body, /data-location="fridge"/);

@@ -71,11 +71,6 @@
             <p>The inventory itself is not empty &mdash; <a href="/inventory">clear all filters</a> to see all <%= totalCount %> item(s).</p>
           </section>
         <% } else { %>
-        <section class="sort-toolbar" aria-label="Sort inventory">
-          <span>Sort by:</span>
-          <button type="button" data-sort="date" aria-pressed="false">Expiration date</button>
-          <button type="button" data-sort="location" aria-pressed="false">Location</button>
-        </section>
         <section class="inventory-list">
           <% items.forEach((item) => { %>
             <article class="inventory-item" data-date="<%= item.expirationDate || '' %>" data-location="<%= item.location %>" data-status="<%= item.expirationStatus || '' %>">
@@ -98,7 +93,6 @@
             </article>
           <% }) %>
         </section>
-        <script src="/inventory-sort.js"></script>
         <% } %>
       <% } %>
     </main>
