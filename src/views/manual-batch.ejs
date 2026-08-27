@@ -39,32 +39,25 @@
         <section class="batch-grid">
           <% rows.forEach((row, index) => { %>
             <article class="batch-row">
-              <div class="row-actions">
+                            <div class="row-actions">
                 <strong>Row <%= index + 1 %></strong>
-                <button type="submit" name="action" value="move-up" name="action" formaction="/batches/manual" aria-label="Move row <%= index + 1 %> up">
-                  <span class="sr-only">Move row <%= index + 1 %> up</span>Move up
-                </button>
-                <button type="submit" name="action" value="move-down" formaction="/batches/manual" name="action" aria-label="Move row <%= index + 1 %> down">
-                  <span class="sr-only">Move row <%= index + 1 %> down</span>Move down
-                </button>
-                <button type="submit" name="action" value="duplicate-row" formaction="/batches/manual" name="action" aria-label="Duplicate row <%= index + 1 %>">
-                  <span class="sr-only">Duplicate row <%= index + 1 %></span>Duplicate
-                </button>
-                <button type="submit" name="action" value="remove-row" formaction="/batches/manual" name="action" aria-label="Remove row <%= index + 1 %>">
-                  <span class="sr-only">Remove row <%= index + 1 %></span>Remove
-                </button>
-                <button type="submit" name="action" value="enter-row" formaction="/batches/manual" name="action" aria-label="Advance from row <%= index + 1 %>">
-                  <span class="sr-only">Advance from row <%= index + 1 %></span>Enter advances
-                </button>
-                <button type="submit" class="sr-only" name="actionRowIndex" value="<%= index %>" data-row-submit-index="<%= index %>">row-submit-index</button>
+                <!-- Ticket 4.3: each button targets its own row via ?row= so
+                     the editor is correct without JavaScript. Exactly one
+                     name="action" per button — previously duplicated, which
+                     collapsed every button's value to its move-up sibling's. -->
+                <button type="submit" name="action" value="move-up" formaction="/batches/manual?row=<%= index %>" aria-label="Move row <%= index + 1 %> up"><span class="sr-only">Move row <%= index + 1 %> up</span>Move up</button>
+                <button type="submit" name="action" value="move-down" formaction="/batches/manual?row=<%= index %>" aria-label="Move row <%= index + 1 %> down"><span class="sr-only">Move row <%= index + 1 %> down</span>Move down</button>
+                <button type="submit" name="action" value="duplicate-row" formaction="/batches/manual?row=<%= index %>" aria-label="Duplicate row <%= index + 1 %>"><span class="sr-only">Duplicate row <%= index + 1 %></span>Duplicate</button>
+                <button type="submit" name="action" value="remove-row" formaction="/batches/manual?row=<%= index %>" aria-label="Remove row <%= index + 1 %>"><span class="sr-only">Remove row <%= index + 1 %></span>Remove</button>
+                <button type="submit" name="action" value="enter-row" formaction="/batches/manual?row=<%= index %>" data-enter-row="<%= index %>" aria-label="Advance from row <%= index + 1 %> (press Enter in the name field)"><span class="sr-only">Advance from row <%= index + 1 %> by pressing Enter in the name field</span>Enter advances</button>
               </div>
 
               <div class="field-grid">
                 <label>
                   Name
-                  <input name="rows[<%= index %>][name]" value="<%= row.name %>" data-enter-target="name" data-name-suggest
+                                    <input name="rows[<%= index %>][name]" value="<%= row.name %>" data-enter-target="name" data-name-suggest
                          autocomplete="off" role="combobox" aria-autocomplete="list"
-                         aria-expanded="false" aria-controls="name-suggestions-<%= index %>" />
+                         aria-expanded="false" aria-controls="name-suggestions-<%= index %>" <%= focusRow === index ? 'autofocus' : '' %> />
                   <ul class="name-suggestions" id="name-suggestions-<%= index %>" role="listbox"
                       aria-label="Previously used item names" hidden></ul>
                 </label>

@@ -12,6 +12,7 @@ const {
   createConfirmedInventoryItem,
   getActiveInventoryForDisplay
 } = require('../src/services/inventory-service');
+const { saveManualDraftBatch } = require('../src/services/intake-batch-service');
 
 function startServer(app) {
   const server = app.listen(0);
@@ -229,6 +230,91 @@ test('rendered page declares the duplicate-check URL consumed by the live watche
     assert.equal(probe.status, 200);
     const payload = await probe.json();
     assert.ok(Array.isArray(payload.matches));
+  } finally {
+    server.close();
+  }
+});
+
+
+test('no-JavaScript row actions target the correct row (move-up via ?row=)', async () => {
+  await resetAllTables();
+  await seedActiveItem({});
+  const saved = await saveManualDraftBatch({
+    batchId: null,
+    rows: [
+      { name: 'aaa', quantity: '1', unit: 'package', location: 'fridge', expirationDate: '', dateType: '' },
+      { name: 'bbb', quantity: '1', unit: 'package', location: 'fridge', expirationDate: '', dateType: '' }
+    ]
+  });
+
+  const { server, base } = startServer(createApp());
+  try {
+    const params = new URLSearchParams();
+    params.set('batchId', String(saved.id));
+    params.set('action', 'move-up');
+    params.set('rows[0][name]', 'aaa'); params.set('rows[1][name]', 'bbb');
+    const response = await fetch(`${base}/batches/manual?row=1`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: params
+    });
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    // row 0 became bbb, row 1 became aaa
+    const i1 = body.indexOf('value="bbb"');
+    const i2 = body.indexOf('value="aaa"');
+    assert.ok(i1 >= 0 && i2 >= 0);
+    assert.ok(i1 < i2, 'bbb should render before aaa after move-up?row=0');
+  } finally {
+    server.close();
+  }
+});
+
+test('no-JavaScript enter-row fallback moves focus to the next row', async () => {
+  await resetAllTables();
+  const saved = await saveManualDraftBatch({
+    batchId: null,
+    rows: [
+      { name: 'aaa', quantity: '', unit: '', location: '', expirationDate: '', dateType: '' },
+      { name: 'bbb', quantity: '', unit: '', location: '', expirationDate: '', dateType: '' }
+    ]
+  });
+
+  const { server, base } = startServer(createApp());
+  try {
+    const params = new URLSearchParams();
+    params.set('batchId', String(saved.id));
+    params.set('action', 'enter-row');
+    params.set('rows[0][name]', 'aaa'); params.set('rows[1][name]', 'bbb');
+    const response = await fetch(`${base}/batches/manual?row=0`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: params
+    });
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    assert.match(body, /Moved to row 2\./);
+    assert.match(body, /name="rows\[1\]\[name]"[^>]*autofocus/);
+  } finally {
+    server.close();
+  }
+});
+
+test('validation error autofocuses the offending row and keeps the editor usable', async () => {
+  await resetAllTables();
+  await seedActiveItem({});
+  const { server, base } = startServer(createApp());
+  try {
+    // save-to-inventory on a nameless-but-Milk-proposal row: validation fails
+    // and the editor must re-render with autofocus set AND warnings retained.
+    const response = await postForm(base, {
+      ...rowFields(0, { name: 'MILK', quantity: '1', unit: 'package', location: '' }),
+      action: 'save-to-inventory'
+    });
+    assert.equal(response.status, 400);
+    const body = await response.text();
+    assert.match(body, /autofocus/);
+    assert.match(body, /data-name-suggest/);
   } finally {
     server.close();
   }

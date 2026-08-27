@@ -144,3 +144,28 @@ test('invalid-state confirmation renders 409 review with warnings intact', async
   } finally { server.close(); }
 });
 
+
+
+test('confirmation validation error (pending batch, nameless accepted row) autofocuses and keeps warnings', async () => {
+  await resetAllTables();
+  await seedActiveItem({}); // active Milk -> proposal warns
+  const saved = await saveManualDraftBatch({
+    batchId: null,
+    rows: [{ name: 'MILK', quantity: '2', unit: 'package', location: '', expirationDate: '', dateType: '' }]
+  });
+  await markBatchPendingReview(saved.id);
+
+  const { server, base } = await startApp();
+  try {
+    const response = await fetch(`${base}/batches/${saved.id}/confirm`, { method: 'POST' });
+    assert.equal(response.status, 400);
+    const body = await response.text();
+    assert.match(body, /aria-live="polite"/);
+    assert.match(body, /data-row-duplicate-warning="0"/);
+    assert.doesNotMatch(body, /data-row-duplicate-warning="0"[^>]*hidden/);
+    assert.match(body, /autofocus/);
+    assert.match(body, new RegExp(`/batches/${saved.id}/confirm`));
+  } finally {
+    server.close();
+  }
+});

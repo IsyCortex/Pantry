@@ -42,7 +42,7 @@
               <div class="field-grid">
                 <label>
                   Name
-                  <input name="rows[<%= index %>][name]" value="<%= row.name %>" />
+                                    <input name="rows[<%= index %>][name]" value="<%= row.name %>" <%= focusRow === index ? 'autofocus' : '' %> />
                 </label>
                 <label>
                   Quantity

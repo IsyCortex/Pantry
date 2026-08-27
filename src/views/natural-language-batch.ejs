@@ -18,11 +18,26 @@
         </section>
       <% } %>
 
-      <form method="post" action="/batches/natural-language">
+            <form method="post" action="/batches/natural-language">
         <label for="rawText">Grocery description</label>
         <textarea id="rawText" name="rawText" rows="6" placeholder="e.g. Fridge: two cartons of milk best before 20 August. Maybe some rice."><%= rawText %></textarea>
-        <button type="submit" class="primary-btn">Analyze items</button>
+        <button id="analyzeButton" type="submit" class="primary-btn">Analyze items</button>
       </form>
+
+      <!-- Ticket 4.3 — loading state so analysis has a distinct, non-blank
+           progress indicator instead of a silent submit. -->
+      <script>
+        (function () {
+          const form = document.forms[0];
+          const button = document.getElementById('analyzeButton');
+          if (!form || !button) return;
+          form.addEventListener('submit', function () {
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+            button.textContent = 'Analyzing items…';
+          });
+        })();
+      </script>
 
       <p><a href="/batches/manual">Continue with a manual intake batch instead</a></p>
     </main>

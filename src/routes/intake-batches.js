@@ -24,9 +24,46 @@ function createEmptyRow(location = '') {
   };
 }
 
-function getActionIndex(body) {
-  const raw = body.actionRowIndex;
+function getActionIndex(body, query) {
+  // Ticket 4.3 — row-action buttons target their own row via a formaction
+  // query parameter (works without JavaScript); the sr-only keyboard helper
+  // button supplies actionRowIndex as a form field.
+  const raw = (body && body.actionRowIndex) || (query && query.row);
   return Number(raw || 0);
+}
+
+// Ticket 4.3 — derive the row that should receive focus after a validation
+// failure. Details arrive either as human-readable strings ("Row 2: ...") or
+// as per-row field-error objects (review corrections). Falls back to the
+// first row whenever errors exist but carry no row information, and to -1
+// (no focus) when there are no details at all.
+function firstErrorRowIndex(details) {
+  if (!Array.isArray(details) || details.length === 0) {
+    return -1;
+  }
+  for (let index = 0; index < details.length; index += 1) {
+    const detail = details[index];
+    if (detail && typeof detail === 'object') {
+      const objectIndex = Number(detail.index);
+      const objectPosition = Number(detail.position);
+      if (Number.isFinite(objectIndex)) {
+        return objectIndex;
+      }
+      if (Number.isFinite(objectPosition)) {
+        return objectPosition;
+      }
+      const hasAnyError = Object.keys(detail).some((key) => detail[key]);
+      if (hasAnyError) {
+        return index;
+      }
+      continue;
+    }
+    const match = String(detail).match(/row\D*(\d+)/i);
+    if (match) {
+      return Number(match[1]) - 1;
+    }
+  }
+  return 0;
 }
 
 function parseRows(body) {
@@ -46,7 +83,7 @@ function parseRows(body) {
   return rows;
 }
 
-function createReviewLocals({ batchId, rows, defaultLocation, errors = [], notice = null }) {
+function createReviewLocals({ batchId, rows, defaultLocation, errors = [], notice = null, focusRow = -1 }) {
   return {
     title: 'Review intake batch',
     batchId,
@@ -54,6 +91,7 @@ function createReviewLocals({ batchId, rows, defaultLocation, errors = [], notic
     defaultLocation,
     errors,
     notice,
+    focusRow,
     locations: Array.from(VALID_LOCATIONS),
     units: Array.from(VALID_UNITS),
     dateTypes: Array.from(VALID_DATE_TYPES)
@@ -74,7 +112,7 @@ function createIntakeBatchRouter(options = {}) {
   // advisory duplicate warnings. Warnings never influence validation or
   // confirmation semantics, and even a failing loader degrades gracefully to
   // "no warnings" instead of interrupting entry work.
-  async function renderManualBatch(res, { batchId, rows, defaultLocation, errors = [], notice = null }, status = 200) {
+  async function renderManualBatch(res, { batchId, rows, defaultLocation, errors = [], notice = null, focusRow = -1 }, status = 200) {
     let warnings;
     try {
       const activeItems = await activeInventoryLoader();
@@ -90,6 +128,7 @@ function createIntakeBatchRouter(options = {}) {
       defaultLocation,
       errors,
       notice,
+      focusRow,
       locations: Array.from(VALID_LOCATIONS),
       units: Array.from(VALID_UNITS),
       dateTypes: Array.from(VALID_DATE_TYPES)
@@ -150,12 +189,13 @@ function createIntakeBatchRouter(options = {}) {
         rows,
         defaultLocation,
         errors: [],
-        notice: 'Row added.'
+        notice: 'Row added.',
+        focusRow: rows.length - 1
       });
     }
 
     if (action === 'duplicate-row') {
-      const index = getActionIndex(req.body);
+      const index = getActionIndex(req.body, req.query);
       const source = rows[index] || createEmptyRow(defaultLocation);
       rows.splice(index + 1, 0, { ...source });
       return renderManualBatch(res, {
@@ -163,12 +203,13 @@ function createIntakeBatchRouter(options = {}) {
         rows,
         defaultLocation,
         errors: [],
-        notice: 'Row duplicated.'
+        notice: 'Row duplicated.',
+        focusRow: index + 1
       });
     }
 
     if (action === 'remove-row') {
-      const index = getActionIndex(req.body);
+      const index = getActionIndex(req.body, req.query);
       rows.splice(index, 1);
       if (rows.length === 0) {
         rows.push(createEmptyRow(defaultLocation));
@@ -178,23 +219,46 @@ function createIntakeBatchRouter(options = {}) {
         rows,
         defaultLocation,
         errors: [],
-        notice: 'Row removed.'
+        notice: 'Row removed.',
+        focusRow: Math.min(index, rows.length - 1)
       });
     }
 
     if (action === 'move-up' || action === 'move-down') {
-      const index = getActionIndex(req.body);
+      const index = getActionIndex(req.body, req.query);
       const targetIndex = action === 'move-up' ? index - 1 : index + 1;
+      let focusRow = index;
       if (targetIndex >= 0 && targetIndex < rows.length) {
         const [row] = rows.splice(index, 1);
         rows.splice(targetIndex, 0, row);
+        focusRow = targetIndex;
       }
       return renderManualBatch(res, {
         batchId: req.body.batchId || '',
         rows,
         defaultLocation,
         errors: [],
-        notice: action === 'move-up' ? 'Row moved up.' : 'Row moved down.'
+        notice: action === 'move-up' ? 'Row moved up.' : 'Row moved down.',
+        focusRow
+      });
+    }
+
+        if (action === 'enter-row') {
+      // Ticket 4.3 — no-JS keyboard fallback for "advance to next row": move
+      // focus to the following row's Name field (or the last row if this is
+      // already last), without saving. With JavaScript present the 4.1 handler
+      // advances focus client-side instead; this branch makes the editor fully
+      // functional without JavaScript.
+      const index = getActionIndex(req.body, req.query);
+      const safeIndex = Number.isFinite(index) && index >= 0 && index < rows.length ? index : 0;
+      const nextIndex = safeIndex < rows.length - 1 ? safeIndex + 1 : rows.length - 1;
+      return renderManualBatch(res, {
+        batchId: req.body.batchId || '',
+        rows,
+        defaultLocation,
+        errors: [],
+        notice: 'Moved to row ' + (nextIndex + 1) + '.',
+        focusRow: nextIndex
       });
     }
 
@@ -216,7 +280,8 @@ function createIntakeBatchRouter(options = {}) {
             rows: rows.length > 0 ? rows : [createEmptyRow(defaultLocation)],
             defaultLocation,
             errors: error.details,
-            notice: null
+            notice: null,
+            focusRow: firstErrorRowIndex(error.details)
           }, 400);
         }
 
@@ -241,7 +306,8 @@ function createIntakeBatchRouter(options = {}) {
           rows: rows.length > 0 ? rows : [createEmptyRow(defaultLocation)],
           defaultLocation,
           errors: error.details,
-          notice: null
+          notice: null,
+          focusRow: firstErrorRowIndex(error.details)
         }, 400);
         return;
       }
@@ -337,7 +403,8 @@ function createIntakeBatchRouter(options = {}) {
             batchId: req.params.batchId,
             rows,
             defaultLocation,
-            errors: error.details
+                        errors: error.details,
+            focusRow: firstErrorRowIndex(error.details)
           }),
           structuredFieldErrors: buildReviewErrorDetails(rows)
         }, 400);
@@ -360,7 +427,8 @@ function createIntakeBatchRouter(options = {}) {
             batchId: req.params.batchId,
             rows: batch ? batch.rows : [],
             defaultLocation: '',
-            errors: error.details
+                        errors: error.details,
+            focusRow: firstErrorRowIndex(error.details)
           }),
           structuredFieldErrors: buildReviewErrorDetails(batch ? batch.rows : [])
         }, 400);
@@ -374,7 +442,8 @@ function createIntakeBatchRouter(options = {}) {
             batchId: req.params.batchId,
             rows: batch ? batch.rows : [],
             defaultLocation: '',
-            errors: [error.message]
+                        errors: [error.message],
+            focusRow: firstErrorRowIndex([error.message])
           }),
           structuredFieldErrors: buildReviewErrorDetails(batch ? batch.rows : [])
         }, 409);

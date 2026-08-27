@@ -228,6 +228,19 @@ button:hover, button:focus { background-color: var(--color-primary-hover); }
   font-size: 0.9rem;
 }
 
+/* Ticket 4.3 — focus ring and mobile tightening for keyboard + narrow viewport use */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+@media (max-width: 36rem) {
+  .toolbar > * { min-width: 10ch; }
+  .toolbar { justify-content: flex-start; }
+  .row-actions { gap: 0.4rem; }
+  .batch-row { padding: 0.75rem; }
+  .review-row { padding: 0.75rem; }
+}
+
 @media (max-width: 48rem) { .inventory-row { flex-direction: column; } }
 
 /* Manual batch editor */
