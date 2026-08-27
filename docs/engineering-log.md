@@ -10,6 +10,20 @@ This log records implementation-phase engineering notes, deviations, and evidenc
 - Pantry release tags follow Semantic Versioning, and the corrected M0 release is `v0.1.2`.
 - Ticket-level implementation evidence continues to be recorded in the corresponding GitHub issues as the authoritative live technical record.
 
+## M4 — Faster repeat entry and accessibility
+
+### Ticket 4.1 — Name suggestions on repeat entry (manual batch intake)
+
+- Branch: `feature/m4`, based on `5d42c4e` (post-M3-release `develop` tip).
+- Owner decisions captured during planning (Issue #21): suggestions are strictly **read-only candidates** — selecting one merely prefills the row's visible, editable fields, and nothing is written until the user presses **Save to inventory** explicitly. The suggestion source deliberately spans **all** lifecycle statuses: used-up/discarded rows are valid household history and should resurface.
+- Implementation:
+  - New pure service `src/services/name-suggestion-service.js`: `buildNameSuggestions(entries, rawQuery, { limit })` + `normalizeName()`. Ranking: names starting with the query > higher usage frequency > lexicographic tie-breaks. Case-insensitive matching against stored names; spellings differing only by casing/whitespace collapse into ONE candidate whose representative spelling prefers naturally cased text over ALL-CAPS (then shortest, then lexicographic) so output stays deterministic while user input is never mutated; similar-but-distinct names never silently merge; each candidate carries the location most frequently paired with that exact name.
+  - Additive DB read `src/db/inventory.js` → `listInventoryItemNameLocations()` over all lifecycle statuses (no migration, no write path).
+  - Read-only JSON endpoint `GET /inventory/name-suggestions?q=` registered **before** the `/:id` routes; provider is injectable, and provider failure degrades to a safe JSON error without leaking internals.
+  - Accessible combobox wired into every entry-row Name field of `src/views/manual-batch.ejs` (+ combobox styles in `styles.css`): WAI-ARIA combobox/listbox pattern with `aria-expanded`/`aria-controls`/`aria-activedescendant` and a labelled listbox; debounced fetching; ↑/↓ candidate navigation; Enter prefills the highlighted candidate without triggering the row-advance shortcut; Escape/click-away/mouse-pick dismissal; item names rendered exclusively through DOM text nodes (injection-safe). Progressive enhancement: without JavaScript the form behaves exactly as before.
+- Tests: new pure unit suite `tests/name-suggestions.test.js` (14 cases covering empty/garbage queries, ranking, common-location selection, dedupe-vs-distinct names, limits, deterministic ties, non-mutation) plus four integration additions to `tests/inventory.route.test.js`: ranked results including prior entries with an inventory-row-count invariant proving the endpoint never writes, blank/unknown query handling, injected-failure 500 safety against secret leakage, and rendered form hooks asserting `role="combobox"`/`role="listbox"` wiring and the absence of any auto-confirm/auto-create path.
+- Verification at final ticket HEAD: full serial suite `node --test --test-concurrency=1` → **159/159 pass** (baseline was 141; +18).
+
 ## M3 — Expiration awareness and inventory navigation
 
 Milestone 3 targets expiration awareness over the Pantry inventory.

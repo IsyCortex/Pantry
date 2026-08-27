@@ -1,6 +1,8 @@
 const { createInventoryItem, getInventoryItemById, updateInventoryItem, transitionInventoryLifecycle, listActiveInventoryItems } = require('../db/inventory');
 const { validateInventoryItem } = require('../validation/inventory');
 const { applyExpirationStatus, orderInventoryItemsForDisplay } = require('./expiration-status-service');
+const { listInventoryItemNameLocations } = require('../db/inventory');
+const { buildNameSuggestions } = require('./name-suggestion-service');
 
 async function createConfirmedInventoryItem(input, client) {
   const validation = validateInventoryItem(input);
@@ -136,11 +138,20 @@ function filterInventoryItems(displayItems, filters = {}) {
   });
 }
 
+// Ticket 4.1 — read-only name suggestions from existing/prior entries.
+// Aggregation and ranking live in the pure suggestion service; this wrapper
+// only supplies the stored entry pairs and never performs any write.
+async function getNameSuggestions(rawQuery) {
+  const entries = await listInventoryItemNameLocations();
+  return buildNameSuggestions(entries, rawQuery);
+}
+
 module.exports = {
   createConfirmedInventoryItem,
   getConfirmedInventoryItem,
   updateConfirmedInventoryItem,
   markInventoryItemRemoved,
   getActiveInventoryForDisplay,
-  filterInventoryItems
+  filterInventoryItems,
+  getNameSuggestions
 };

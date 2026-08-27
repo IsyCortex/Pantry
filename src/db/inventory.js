@@ -104,10 +104,24 @@ async function listActiveInventoryItems() {
   return result.rows;
 }
 
+// Ticket 4.1 — read-only lookup of every stored entry's name/location pair,
+// across ALL lifecycle statuses: used-up and discarded rows are genuine prior
+// household entries and remain valid sources for repeat-entry suggestions.
+async function listInventoryItemNameLocations() {
+  const result = await pool.query(
+    `SELECT name, location
+     FROM inventory_items
+     ORDER BY id ASC`
+  );
+
+  return result.rows;
+}
+
 module.exports = {
   createInventoryItem,
   getInventoryItemById,
   updateInventoryItem,
   transitionInventoryLifecycle,
-  listActiveInventoryItems
+  listActiveInventoryItems,
+  listInventoryItemNameLocations
 };
