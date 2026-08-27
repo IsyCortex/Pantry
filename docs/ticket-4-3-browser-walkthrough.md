@@ -89,3 +89,43 @@ gaps:
 Regression guard added in `tests/manual-batch.route.test.js`: the rendered
 editor is asserted to place every row's editable fields before its action
 buttons in the document (previewable keyboard tab order).
+
+---
+
+## Follow-up — acceptance round 3 (focus after create/delete; NL failure focus; broad narrow-mobile)
+
+Two criteria were marked *partially met* again: predictable focus (creation and
+deletion focus were not browser-exercised, and natural-language failure had no
+deliberate focus target) and narrow-mobile (the NL form, AI review page, and
+inventory had not been included in the narrow-viewport verification). Closed
+with commit **`cc7deef`** plus this browser evidence (same environment:
+Chromium 151.0.7922.173 headless/raw CDP):
+
+- **Creation/deletion focus now browser-verified.** Live assertions: `add-row`
+  autofocuses the newly created row's Name, `duplicate-row` autofocuses the
+  copy, `remove-row` autofocuses a remaining row's Name.
+- **Natural-language failure focus target.** On an analysis failure (400/422
+  re-render) the preserved `rawText #rawText` textarea now carries `autofocus`,
+  giving keyboard users an explicit recovery target. Regression-tested in
+  `tests/natural-language-intake.test.js`; browser-verified with an empty
+  submit landing focus on the textarea.
+- **Broad narrow-mobile coverage.** The natural-language form, the AI review
+  page, and the inventory page are all verified to have **no horizontal
+  overflow at 320px**.
+
+### Round-3 browser verification (all PASS)
+
+| Check | Assertion | Result |
+| --- | --- | --- |
+| focus | add-row autofocuses the newly created row name | **PASS** |
+| focus | duplicate-row autofocuses the copied row name | **PASS** |
+| focus | remove-row autofocuses a remaining row name | **PASS** |
+| focus | NL failure re-render autofocuses the preserved rawText textarea | **PASS** |
+| mobile | NL form no horizontal overflow at 320px | **PASS** |
+| mobile | AI review page no horizontal overflow at 320px | **PASS** |
+| mobile | inventory page no horizontal overflow at 320px | **PASS** |
+
+With the round-2 checks (fields-first tab order, Ctrl+Enter completion, error
+autofocus, 320px no overflow + touch targets on the manual editor), every
+acceptance criterion is now directly browser-verified. Full serial suite
+**187/187 pass**; focused **30/30**.
