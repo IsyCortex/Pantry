@@ -703,3 +703,30 @@ test('manual batch form renders the accessible suggestion hooks and never prefil
     server.close();
   }
 });
+
+test('every manual batch Name input carries the data-name-suggest hook the initializer selects (T4.1 regression)', async () => {
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/batches/manual`);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+
+    // Rendered hook must exist on EVERY name input regardless of row count,
+    // and must be exactly the attribute the inline initializer selects —
+    // otherwise the combobox silently initializes zero inputs (the T4.1
+    // regression this assertion pins).
+    const inputTags = body.match(/<input\b[^>]*>/g) || [];
+    const nameInputs = inputTags.filter((tag) =>
+      tag.includes('name="rows[') && tag.includes('data-enter-target="name"'));
+    assert.ok(nameInputs.length >= 1, 'manual batch form renders at least one Name input');
+    for (const tag of nameInputs) {
+      assert.match(tag, /data-name-suggest(=|[\s>])/, 'Name input must carry the data-name-suggest hook');
+    }
+    assert.match(body, /querySelectorAll\('input\[data-name-suggest\]'\)/,
+      'initializer must select the same hook the markup renders');
+  } finally {
+    server.close();
+  }
+});
