@@ -3,6 +3,7 @@ const { validateInventoryItem } = require('../validation/inventory');
 const { applyExpirationStatus, orderInventoryItemsForDisplay } = require('./expiration-status-service');
 const { listInventoryItemNameLocations } = require('../db/inventory');
 const { buildNameSuggestions } = require('./name-suggestion-service');
+const { findDraftRowDuplicates, findRowDuplicateMatches } = require('./duplicate-detection-service');
 
 async function createConfirmedInventoryItem(input, client) {
   const validation = validateInventoryItem(input);
@@ -146,6 +147,21 @@ async function getNameSuggestions(rawQuery) {
   return buildNameSuggestions(entries, rawQuery);
 }
 
+// Ticket 4.2 — advisory duplicate lookup against ACTIVE inventory. Both
+// wrappers are purely read-side: they feed warnings on the manual batch
+// editor and the /inventory/duplicate-check endpoint; nothing here writes,
+// merges, or blocks. Failures of the underlying loader must be handled by
+// callers (warnings degrade gracefully instead of breaking the editor).
+async function getNameDuplicateWarnings(rawQuery) {
+  const items = await getActiveInventoryForDisplay();
+  return findRowDuplicateMatches(String(rawQuery ?? ''), items);
+}
+
+async function getDraftRowDuplicateWarnings(draftRows) {
+  const items = await getActiveInventoryForDisplay();
+  return findDraftRowDuplicates(Array.isArray(draftRows) ? draftRows : [], items);
+}
+
 module.exports = {
   createConfirmedInventoryItem,
   getConfirmedInventoryItem,
@@ -153,5 +169,7 @@ module.exports = {
   markInventoryItemRemoved,
   getActiveInventoryForDisplay,
   filterInventoryItems,
-  getNameSuggestions
+  getNameSuggestions,
+  getNameDuplicateWarnings,
+  getDraftRowDuplicateWarnings
 };

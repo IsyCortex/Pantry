@@ -109,6 +109,22 @@
                   </select>
                 </label>
               </div>
+
+              <% const rowWarnings = Array.isArray(row.duplicateWarnings) ? row.duplicateWarnings : []; %>
+              <section class="duplicate-warning" data-duplicate-warning="<%= index %>" aria-live="polite" <%= rowWarnings.length === 0 ? 'hidden' : '' %>>
+                <% if (rowWarnings.length > 0) { %>
+                  <p class="duplicate-warning-title">Possible duplicates already in your inventory</p>
+                  <ul class="duplicate-warning-list">
+                    <% rowWarnings.forEach((warning) => { %>
+                      <li>
+                        <span class="suggestion-name"><%= warning.matchedItem.name %></span><% if (warning.matchedItem.quantity != null) { %><span class="suggestion-location"> · <%= warning.matchedItem.quantity %><%= warning.matchedItem.unit ? ' ' + warning.matchedItem.unit : '' %></span><% } %><% if (warning.matchedItem.location) { %><span class="suggestion-location"> · <%= warning.matchedItem.location %></span><% } %><% if (warning.matchedItem.expirationDate) { %><span class="suggestion-location"> · expires <%= warning.matchedItem.expirationDate %></span><% } %>
+                        <span class="duplicate-rule subtle"><%= warning.ruleDetail %></span>
+                      </li>
+                    <% }) %>
+                  </ul>
+                  <p class="subtle">Saving keeps both entries side by side — nothing is merged automatically.</p>
+                <% } %>
+              </section>
             </article>
           <% }) %>
         </section>
@@ -274,6 +290,13 @@
               // over the freshly applied value.
               clearTimeout(debounceTimer);
               input.dispatchEvent(new Event('input', { bubbles: true }));
+              // Ticket 4.2 — let the duplicate-warning watcher re-check the
+              // applied name immediately (synthetic input events are ignored
+              // by watchers on purpose, so a dedicated explicit signal).
+              input.dispatchEvent(new CustomEvent('name-prefilled', {
+                bubbles: true,
+                detail: { name: item.dataset.name }
+              }));
               setOpen(false);
               input.focus();
             }
@@ -342,6 +365,123 @@
           }
 
           document.querySelectorAll('input[data-name-suggest]').forEach(setupCombobox);
+
+          // Ticket 4.2 — live duplicate warnings per Name field, mirroring
+          // the server-rendered warnings so feedback appears while typing.
+          // Strictly informational: no control is ever disabled or altered,
+          // and saving behavior is untouched. Without JavaScript the
+          // server-rendered warnings on every page load still cover review.
+          function setupDuplicateWarning(input) {
+            const controlsIndex = input.getAttribute('aria-controls') || '';
+            const match = controlsIndex.match(/(\d+)$/);
+            if (!match) return;
+            const container = document.querySelector('[data-duplicate-warning="' + Number(match[1]) + '"]');
+            if (!container) return;
+
+            let checkTimer = null;
+
+            function hide() {
+              container.hidden = true;
+              container.textContent = '';
+            }
+
+            function renderMatches(matches) {
+              container.textContent = '';
+              if (!Array.isArray(matches) || matches.length === 0) {
+                container.hidden = true;
+                return;
+              }
+
+              const title = document.createElement('p');
+              title.className = 'duplicate-warning-title';
+              title.textContent = 'Possible duplicates already in your inventory';
+              container.appendChild(title);
+
+              const ul = document.createElement('ul');
+              ul.className = 'duplicate-warning-list';
+              matches.forEach(function (match) {
+                const stored = match && match.matchedItem ? match.matchedItem : {};
+                const li = document.createElement('li');
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'suggestion-name';
+                nameSpan.textContent = String(stored.name == null ? '' : stored.name);
+                li.appendChild(nameSpan);
+
+                const parts = [];
+                if (stored.quantity != null) {
+                  parts.push(String(stored.quantity) + (stored.unit ? ' ' + stored.unit : ''));
+                }
+                if (stored.location) parts.push(String(stored.location));
+                if (stored.expirationDate) parts.push('expires ' + String(stored.expirationDate));
+                if (parts.length) {
+                  const meta = document.createElement('span');
+                  meta.className = 'suggestion-location';
+                  meta.textContent = ' \u00b7 ' + parts.join(' \u00b7 ');
+                  li.appendChild(meta);
+                }
+
+                if (match.ruleDetail) {
+                  const rule = document.createElement('span');
+                  rule.className = 'duplicate-rule subtle';
+                  rule.textContent = ' ' + String(match.ruleDetail);
+                  li.appendChild(rule);
+                }
+                ul.appendChild(li);
+              });
+              container.appendChild(ul);
+
+              const hint = document.createElement('p');
+              hint.className = 'subtle';
+              hint.textContent = 'Saving keeps both entries side by side \u2014 nothing is merged automatically.';
+              container.appendChild(hint);
+
+              container.hidden = false;
+            }
+
+            async function requestCheck(rawName) {
+              try {
+                const response = await fetch(CHECK_URL + encodeURIComponent(rawName), {
+                  headers: { Accept: 'application/json' }
+                });
+                if (!response.ok) {
+                  return;
+                }
+                const data = await response.json();
+                renderMatches(Array.isArray(data.matches) ? data.matches : []);
+              } catch (error) {
+                // Advisory only: network problems never surface as errors.
+              }
+            }
+
+            function scheduleCheck(rawName) {
+              clearTimeout(checkTimer);
+              if (!String(rawName).trim()) {
+                hide();
+                return;
+              }
+              checkTimer = setTimeout(function () { requestCheck(rawName); }, 180);
+            }
+
+            input.addEventListener('input', (event) => {
+              // React only to genuine typing; prefills announce themselves
+              // through the explicit name-prefilled event below.
+              if (!event.isTrusted) return;
+              scheduleCheck(input.value);
+            });
+
+            input.addEventListener('name-prefilled', (event) => {
+              clearTimeout(checkTimer);
+              const appliedName = event && event.detail ? String(event.detail.name || '') : '';
+              if (appliedName.trim()) {
+                checkTimer = setTimeout(function () { requestCheck(appliedName); }, 0);
+              } else {
+                hide();
+              }
+            });
+          }
+
+          document.querySelectorAll('input[data-name-suggest]').forEach(setupDuplicateWarning);
         })();
       </script>
     </main>

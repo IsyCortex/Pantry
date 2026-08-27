@@ -1,5 +1,5 @@
 const express = require('express');
-const { getActiveInventoryForDisplay, getConfirmedInventoryItem, updateConfirmedInventoryItem, markInventoryItemRemoved, filterInventoryItems, getNameSuggestions } = require('../services/inventory-service');
+const { getActiveInventoryForDisplay, getConfirmedInventoryItem, updateConfirmedInventoryItem, markInventoryItemRemoved, filterInventoryItems, getNameSuggestions, getNameDuplicateWarnings } = require('../services/inventory-service');
 const { computeExpirationCounts } = require('../services/expiration-status-service');
 const { VALID_LOCATIONS, VALID_UNITS, VALID_DATE_TYPES } = require('../validation/intake-batch');
 
@@ -48,7 +48,10 @@ function createInventoryRouter({
   inventoryLoader = getActiveInventoryForDisplay,
   // Ticket 4.1 — injectable so route tests can stub suggestions independently
   // of the database.
-  nameSuggestionProvider = getNameSuggestions
+  nameSuggestionProvider = getNameSuggestions,
+  // Ticket 4.2 — injectable so route tests can stub duplicate detection
+  // independently of the database.
+  duplicateWarningProvider = getNameDuplicateWarnings
 } = {}) {
   const router = express.Router();
 
@@ -100,6 +103,10 @@ function createInventoryRouter({
   // the manual batch form. Registered before the parameterized :id routes so
   // the static path can never be mistaken for an item id lookup. Responds
   // only with candidate values; it has no write path of any kind.
+  // Ticket 4.1 — read-only JSON endpoint feeding the accessible combobox on
+  // the manual batch form. Registered before the parameterized :id routes so
+  // the static path can never be mistaken for an item id lookup. Responds
+  // only with candidate values; it has no write path of any kind.
   router.get('/inventory/name-suggestions', async (req, res) => {
     try {
       const rawQuery = typeof req.query.q === 'string' ? req.query.q : '';
@@ -108,6 +115,21 @@ function createInventoryRouter({
     } catch (error) {
       console.error(error.stack || error);
       res.status(500).json({ error: 'Suggestions are unavailable right now.' });
+    }
+  });
+
+  // Ticket 4.2 — read-only JSON endpoint backing the live duplicate warnings
+  // on the manual batch editor: given a draft row's name it returns the
+  // ACTIVE inventory entries that plausibly denote the same product.
+  // Strictly informational; no write path of any kind.
+  router.get('/inventory/duplicate-check', async (req, res) => {
+    try {
+      const rawQuery = typeof req.query.q === 'string' ? req.query.q : '';
+      const matches = await duplicateWarningProvider(rawQuery);
+      res.status(200).json({ query: rawQuery.trim(), matches });
+    } catch (error) {
+      console.error(error.stack || error);
+      res.status(500).json({ error: 'Duplicate lookup is unavailable right now.' });
     }
   });
 

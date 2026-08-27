@@ -8,6 +8,8 @@ const {
   confirmManualBatchFromInput
 } = require('../services/intake-batch-service');
 const { analyzeAndCreateReviewBatch } = require('../services/natural-language-intake-service');
+const { getActiveInventoryForDisplay } = require('../services/inventory-service');
+const { findDraftRowDuplicates } = require('../services/duplicate-detection-service');
 const { VALID_LOCATIONS, VALID_UNITS, VALID_DATE_TYPES } = require('../validation/intake-batch');
 
 function createEmptyRow(location = '') {
@@ -63,22 +65,49 @@ function buildReviewErrorDetails(rows) {
 }
 
 function createIntakeBatchRouter(options = {}) {
+  // Ticket 4.2 — injectable so route tests can exercise the manual editor
+  // against a stubbed active-inventory source instead of the database.
+  const activeInventoryLoader = options.activeInventoryLoader || getActiveInventoryForDisplay;
+
+  // Ticket 4.2 — single render path for the manual batch editor. Before every
+  // render it compares each draft row with the ACTIVE inventory and attaches
+  // advisory duplicate warnings. Warnings never influence validation or
+  // confirmation semantics, and even a failing loader degrades gracefully to
+  // "no warnings" instead of interrupting entry work.
+  async function renderManualBatch(res, { batchId, rows, defaultLocation, errors = [], notice = null }, status = 200) {
+    let warnings;
+    try {
+      const activeItems = await activeInventoryLoader();
+      warnings = findDraftRowDuplicates(rows, activeItems);
+    } catch (error) {
+      console.error(error.stack || error);
+      warnings = rows.map(() => []);
+    }
+    res.status(status).render('manual-batch', {
+      title: 'Manual intake batch',
+      batchId,
+      rows: rows.map((row, index) => ({ ...row, duplicateWarnings: warnings[index] || [] })),
+      defaultLocation,
+      errors,
+      notice,
+      locations: Array.from(VALID_LOCATIONS),
+      units: Array.from(VALID_UNITS),
+      dateTypes: Array.from(VALID_DATE_TYPES)
+    });
+  }
+
   const router = express.Router();
 
   router.get('/batches/manual', async (req, res, next) => {
     try {
       const batch = await ensureManualDraftBatch();
       const rows = batch.rows.length > 0 ? batch.rows : [createEmptyRow()];
-      res.render('manual-batch', {
-        title: 'Manual intake batch',
+      await renderManualBatch(res, {
         batchId: batch.id,
         rows,
         defaultLocation: '',
         errors: [],
-        notice: req.query.notice === 'saved' ? 'Draft batch saved.' : null,
-        locations: Array.from(VALID_LOCATIONS),
-        units: Array.from(VALID_UNITS),
-        dateTypes: Array.from(VALID_DATE_TYPES)
+        notice: req.query.notice === 'saved' ? 'Draft batch saved.' : null
       });
     } catch (error) {
       next(error);
@@ -92,16 +121,12 @@ function createIntakeBatchRouter(options = {}) {
 
     if (action === 'add-row') {
       rows.push(createEmptyRow(defaultLocation));
-      return res.status(200).render('manual-batch', {
-        title: 'Manual intake batch',
+      return renderManualBatch(res, {
         batchId: req.body.batchId || '',
         rows,
         defaultLocation,
         errors: [],
-        notice: 'Row added.',
-        locations: Array.from(VALID_LOCATIONS),
-        units: Array.from(VALID_UNITS),
-        dateTypes: Array.from(VALID_DATE_TYPES)
+        notice: 'Row added.'
       });
     }
 
@@ -109,16 +134,12 @@ function createIntakeBatchRouter(options = {}) {
       const index = getActionIndex(req.body);
       const source = rows[index] || createEmptyRow(defaultLocation);
       rows.splice(index + 1, 0, { ...source });
-      return res.status(200).render('manual-batch', {
-        title: 'Manual intake batch',
+      return renderManualBatch(res, {
         batchId: req.body.batchId || '',
         rows,
         defaultLocation,
         errors: [],
-        notice: 'Row duplicated.',
-        locations: Array.from(VALID_LOCATIONS),
-        units: Array.from(VALID_UNITS),
-        dateTypes: Array.from(VALID_DATE_TYPES)
+        notice: 'Row duplicated.'
       });
     }
 
@@ -128,16 +149,12 @@ function createIntakeBatchRouter(options = {}) {
       if (rows.length === 0) {
         rows.push(createEmptyRow(defaultLocation));
       }
-      return res.status(200).render('manual-batch', {
-        title: 'Manual intake batch',
+      return renderManualBatch(res, {
         batchId: req.body.batchId || '',
         rows,
         defaultLocation,
         errors: [],
-        notice: 'Row removed.',
-        locations: Array.from(VALID_LOCATIONS),
-        units: Array.from(VALID_UNITS),
-        dateTypes: Array.from(VALID_DATE_TYPES)
+        notice: 'Row removed.'
       });
     }
 
@@ -148,16 +165,12 @@ function createIntakeBatchRouter(options = {}) {
         const [row] = rows.splice(index, 1);
         rows.splice(targetIndex, 0, row);
       }
-      return res.status(200).render('manual-batch', {
-        title: 'Manual intake batch',
+      return renderManualBatch(res, {
         batchId: req.body.batchId || '',
         rows,
         defaultLocation,
         errors: [],
-        notice: action === 'move-up' ? 'Row moved up.' : 'Row moved down.',
-        locations: Array.from(VALID_LOCATIONS),
-        units: Array.from(VALID_UNITS),
-        dateTypes: Array.from(VALID_DATE_TYPES)
+        notice: action === 'move-up' ? 'Row moved up.' : 'Row moved down.'
       });
     }
 
@@ -174,18 +187,13 @@ function createIntakeBatchRouter(options = {}) {
         return;
       } catch (error) {
         if (error.code === 'VALIDATION_FAILED') {
-          res.status(400).render('manual-batch', {
-            title: 'Manual intake batch',
+          return renderManualBatch(res, {
             batchId: req.body.batchId || '',
             rows: rows.length > 0 ? rows : [createEmptyRow(defaultLocation)],
             defaultLocation,
             errors: error.details,
-            notice: null,
-            locations: Array.from(VALID_LOCATIONS),
-            units: Array.from(VALID_UNITS),
-            dateTypes: Array.from(VALID_DATE_TYPES)
-          });
-          return;
+            notice: null
+          }, 400);
         }
 
         next(error);
@@ -204,17 +212,13 @@ function createIntakeBatchRouter(options = {}) {
       res.redirect('/batches/manual?notice=saved');
     } catch (error) {
       if (error.code === 'VALIDATION_FAILED') {
-        res.status(400).render('manual-batch', {
-          title: 'Manual intake batch',
+        await renderManualBatch(res, {
           batchId: req.body.batchId || '',
           rows: rows.length > 0 ? rows : [createEmptyRow(defaultLocation)],
           defaultLocation,
           errors: error.details,
-          notice: null,
-          locations: Array.from(VALID_LOCATIONS),
-          units: Array.from(VALID_UNITS),
-          dateTypes: Array.from(VALID_DATE_TYPES)
-        });
+          notice: null
+        }, 400);
         return;
       }
 
