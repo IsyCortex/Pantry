@@ -174,6 +174,24 @@ test('an empty description is rejected safely and creates no batch', async () =>
   });
 });
 
+test('a failed analysis re-render autofocuses the preserved rawText textarea as the recovery target', async () => {
+  await resetAllTables();
+
+  await withApp({ analyzerProvider: stubProvider() }, async (base) => {
+    const body = 'Something something groceries.';
+    const response = await postForm(base, '/batches/natural-language', new URLSearchParams({ rawText: body }));
+    // Unrecognized input is client-side (422), still a safe re-render that
+    // preserves the submitted text for retry.
+    assert.equal(response.status, 422);
+    const html = await response.text();
+    // Deliberate focus target on failure: the preserved description is the
+    // natural place to resume editing — assert the textarea carries autofocus
+    // alongside the preserved value.
+    assert.match(html, /<textarea id="rawText"[^>]*autofocus/);
+    assert.match(html, new RegExp(body));
+  });
+});
+
 test('an unrecognized description yields a safe no-items error and preserves the text', async () => {
   await resetAllTables();
 
