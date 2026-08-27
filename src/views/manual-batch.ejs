@@ -33,25 +33,12 @@
           </label>
           <button type="submit" name="action" value="add-row">Add row</button>
           <button type="submit" name="action" value="save">Save draft batch</button>
-          <button type="submit" name="action" value="save-to-inventory" class="primary-btn">Save to inventory</button>
+          <button type="submit" name="action" value="save-to-inventory" class="primary-btn" title="Save to inventory (Ctrl+Enter)">Save to inventory</button>
         </div>
 
         <section class="batch-grid">
           <% rows.forEach((row, index) => { %>
             <article class="batch-row">
-                            <div class="row-actions">
-                <strong>Row <%= index + 1 %></strong>
-                <!-- Ticket 4.3: each button targets its own row via ?row= so
-                     the editor is correct without JavaScript. Exactly one
-                     name="action" per button — previously duplicated, which
-                     collapsed every button's value to its move-up sibling's. -->
-                <button type="submit" name="action" value="move-up" formaction="/batches/manual?row=<%= index %>" aria-label="Move row <%= index + 1 %> up"><span class="sr-only">Move row <%= index + 1 %> up</span>Move up</button>
-                <button type="submit" name="action" value="move-down" formaction="/batches/manual?row=<%= index %>" aria-label="Move row <%= index + 1 %> down"><span class="sr-only">Move row <%= index + 1 %> down</span>Move down</button>
-                <button type="submit" name="action" value="duplicate-row" formaction="/batches/manual?row=<%= index %>" aria-label="Duplicate row <%= index + 1 %>"><span class="sr-only">Duplicate row <%= index + 1 %></span>Duplicate</button>
-                <button type="submit" name="action" value="remove-row" formaction="/batches/manual?row=<%= index %>" aria-label="Remove row <%= index + 1 %>"><span class="sr-only">Remove row <%= index + 1 %></span>Remove</button>
-                <button type="submit" name="action" value="enter-row" formaction="/batches/manual?row=<%= index %>" data-enter-row="<%= index %>" aria-label="Advance from row <%= index + 1 %> (press Enter in the name field)"><span class="sr-only">Advance from row <%= index + 1 %> by pressing Enter in the name field</span>Enter advances</button>
-              </div>
-
               <div class="field-grid">
                 <label>
                   Name
@@ -103,6 +90,22 @@
                 </label>
               </div>
 
+              <div class="row-actions">
+                <strong>Row <%= index + 1 %></strong>
+                <!-- Ticket 4.3: each button targets its own row via ?row= so
+                     the editor is correct without JavaScript. Exactly one
+                     name="action" per button — previously duplicated, which
+                     collapsed every button's value to its move-up sibling's.
+                     DOM order follows the fields so keyboard tabbing reaches
+                     the row's inputs before its action buttons; CSS order
+                     keeps the actions visually on top. -->
+                <button type="submit" name="action" value="move-up" formaction="/batches/manual?row=<%= index %>" aria-label="Move row <%= index + 1 %> up"><span class="sr-only">Move row <%= index + 1 %> up</span>Move up</button>
+                <button type="submit" name="action" value="move-down" formaction="/batches/manual?row=<%= index %>" aria-label="Move row <%= index + 1 %> down"><span class="sr-only">Move row <%= index + 1 %> down</span>Move down</button>
+                <button type="submit" name="action" value="duplicate-row" formaction="/batches/manual?row=<%= index %>" aria-label="Duplicate row <%= index + 1 %>"><span class="sr-only">Duplicate row <%= index + 1 %></span>Duplicate</button>
+                <button type="submit" name="action" value="remove-row" formaction="/batches/manual?row=<%= index %>" aria-label="Remove row <%= index + 1 %>"><span class="sr-only">Remove row <%= index + 1 %></span>Remove</button>
+                <button type="submit" name="action" value="enter-row" formaction="/batches/manual?row=<%= index %>" data-enter-row="<%= index %>" aria-label="Advance from row <%= index + 1 %> (press Enter in the name field)"><span class="sr-only">Advance from row <%= index + 1 %> by pressing Enter in the name field</span>Enter advances</button>
+              </div>
+
               <% const rowWarnings = Array.isArray(row.duplicateWarnings) ? row.duplicateWarnings : []; %>
               <section class="duplicate-warning" data-duplicate-warning="<%= index %>" aria-live="polite" <%= rowWarnings.length === 0 ? 'hidden' : '' %>>
                 <% if (rowWarnings.length > 0) { %>
@@ -128,6 +131,23 @@
           if (!form) return;
 
           form.addEventListener('keydown', (event) => {
+            // Data-entry accelerator: Ctrl+Enter anywhere in the editor
+            // submits the batch straight to inventory. The toolbar sits above
+            // the rows, so tabbing back to it would otherwise be the only
+            // keyboard path after the last field of the last row.
+            if (event.key === 'Enter' && event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+              const saveToInventory = form.querySelector('button[name="action"][value="save-to-inventory"]');
+              if (saveToInventory) {
+                event.preventDefault();
+                if (typeof form.requestSubmit === 'function') {
+                  form.requestSubmit(saveToInventory);
+                } else {
+                  form.submit();
+                }
+                return;
+              }
+            }
+
             if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) {
               return;
             }

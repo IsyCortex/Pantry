@@ -239,6 +239,14 @@ button:hover, button:focus { background-color: var(--color-primary-hover); }
   .row-actions { gap: 0.4rem; }
   .batch-row { padding: 0.75rem; }
   .review-row { padding: 0.75rem; }
+  /* Comfortable touch targets and overflow guards on narrow viewports. */
+  .toolbar button,
+  .toolbar select,
+  .row-actions button,
+  .field-grid input,
+  .field-grid select { min-height: 2.5rem; }
+  .name-suggestions { max-width: 100%; }
+  .duplicate-warning-list { word-break: break-word; }
 }
 
 @media (max-width: 48rem) { .inventory-row { flex-direction: column; } }
@@ -254,6 +262,9 @@ button:hover, button:focus { background-color: var(--color-primary-hover); }
   background: var(--color-surface);
   display: grid; gap: 0.75rem;
 }
+/* Ticket 4.3 — row actions stay visually on top while the DOM (and therefore
+   keyboard tab order) runs fields first. */
+.batch-row .row-actions { order: -1; }
 .field-grid { display: grid; gap: 0.75rem; }
 @media (min-width: 60rem) { .field-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 

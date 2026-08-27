@@ -319,3 +319,26 @@ test('validation error autofocuses the offending row and keeps the editor usable
     server.close();
   }
 });
+
+test('row fields precede row-action buttons in the document for predictable keyboard tab order', async () => {
+  await resetAllTables();
+  await seedActiveItem({});
+  const { server, base } = startServer(createApp());
+  try {
+    const response = await fetch(`${base}/batches/manual`);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    // Within the first row, the editable fields (name … dateType) must appear
+    // before the row-action buttons so tabbing reaches inputs before actions;
+    // CSS order keeps the actions visually on top.
+    const nameIdx = body.indexOf('rows[0][name]');
+    const dateTypeIdx = body.indexOf('rows[0][dateType]');
+    const moveUpIdx = body.indexOf('value="move-up"');
+    const enterIdx = body.indexOf('value="enter-row"');
+    assert.ok(nameIdx !== -1 && dateTypeIdx !== -1 && moveUpIdx !== -1 && enterIdx !== -1);
+    assert.ok(nameIdx < moveUpIdx, 'name field precedes the Move up button in the document');
+    assert.ok(dateTypeIdx < enterIdx, 'last row field precedes the Enter-advance button');
+  } finally {
+    server.close();
+  }
+});
