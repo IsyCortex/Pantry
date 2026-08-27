@@ -44,3 +44,48 @@ warning flow.
 | Draft work survives expected validation and provider failures | warning retention on the 400 validation re-render (S5/S7 flows stay intact); NL safe-form + `rawText` preservation (Ticket 2.2); manual draft rows repopulate on every re-render |
 | Core workflows remain usable on a narrow mobile viewport | inherited viewport meta + responsive `.field-grid`/`.batch-row`; 36rem CSS tightening and `:focus-visible` outline |
 | Loading, success, empty, and failure states are distinct | NL analysis button now `aria-busy` "Analyzing items…" + disabled; `.errors`/`.notice`/`.empty`/`.excluded` states already distinct and retained |
+
+---
+
+## Follow-up — closing the partially-met acceptance criteria (acceptance round 2)
+
+After product feedback marked the keyboard, focus, and mobile criteria
+*partially met*, a second audit (same environment: Chromium 151.0.7922.173
+headless/raw CDP; implementation commit **`ae734e5`**) closed the remaining
+gaps:
+
+- **Keyboard tab order aligned with the visual/Enter flow.** `.row-actions`
+  moved *after* `.field-grid` in the DOM, so Tab reaches each row's inputs
+  (Name → Quantity → Unit → Location → Expiration → Date type) before its
+  action buttons; CSS `.batch-row .row-actions { order: -1 }` keeps the actions
+  visually on top. Verified live: `Tab` from the Name field lands on Quantity
+  (not "Move up").
+- **Full keyboard completion.** A **Ctrl+Enter** accelerator now submits the
+  editor straight to inventory (the toolbar sits above the rows, so tabbing
+  back to it was otherwise the only keyboard path after the last field of the
+  last row); the Save button carries the hint `title="Save to inventory
+  (Ctrl+Enter)"`. Verified live: combo (ArrowDown+Enter) → Enter-advance →
+  Ctrl+Enter lands on `/inventory?notice=confirmed&created=1`, with a separate
+  `Milk` row persisted (count 2 → 3) and the original id-1 `Milk` untouched.
+- **Predictable focus on errors.** Verified live that the validation-error
+  re-render leaves the offending row's Name field focused (native `autofocus`
+  from `focusRow`).
+- **Narrow-mobile hardening.** At `max-width: 36rem`, comfortable touch target
+  `min-height: 2.5rem` on editor/toolbar controls and overflow guards
+  (`max-width: 100%` suggestions, `word-break` warnings). Verified live at
+  320px: no horizontal overflow and 40px min-height applied.
+
+### Round-2 browser verification (all PASS)
+
+| Check | Assertion | Result |
+| --- | --- | --- |
+| focus | row-actions still display above the fields (CSS order) | **PASS** |
+| keyboard | Tab from Name reaches Quantity first (fields before action buttons) | **PASS** |
+| focus | validation-error render keeps the name field focused | **PASS** |
+| keyboard | Ctrl+Enter submits Save to inventory (full keyboard completion) → `/inventory?notice=confirmed&created=1` | **PASS** |
+| mobile | no horizontal overflow at 320px | **PASS** |
+| mobile | 320px touch target applied (min-height 40px) | **PASS** |
+
+Regression guard added in `tests/manual-batch.route.test.js`: the rendered
+editor is asserted to place every row's editable fields before its action
+buttons in the document (previewable keyboard tab order).
