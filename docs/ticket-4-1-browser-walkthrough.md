@@ -71,3 +71,37 @@ invariant under a real browser.
 All requested interaction paths behave correctly against the corrected build
 (`04a5ae6`). The five Issue #21 acceptance criteria remain **unchecked** pending
 product-owner acceptance.
+
+## 7. Addendum — post-prefill list suppression (second correction, commit `7cde136`)
+
+Acceptance surfaced one more interaction defect after this document's first
+run: selecting a candidate popped the suggestion list open again ~180 ms later.
+The first harness sampled state at +150 ms — just under the 180 ms debounce —
+which is the gap that let it slip past. Mechanism: `choose()` dispatches a
+synthetic input event (so other row logic notices the prefill); the combobox's
+own listener consumed it like a user edit and scheduled a debounced load for
+the just-applied name, and `render()` reopened the list when the non-empty
+response arrived.
+
+Fix (`7cde136`): the suggestion `input` handler ignores programmatic events
+(`event.isTrusted === false`) — suggestions reload only through a genuine
+subsequent edit of the field — and `choose()` clears any pending debounce
+timer at selection time so earlier keystrokes cannot resolve into a reopen.
+
+Re-run on `7cde136`, same environment as §2–§5: all 15 original assertions
+still pass, plus six new post-prefill checks (**21/21 total**):
+
+| Scenario | Assertion | Result |
+| --- | --- | --- |
+| S5 post-prefill | Enter prefill applies (Milk + fridge), list closed immediately | PASS |
+| S5 post-prefill | list stays closed **700 ms** after prefill — no self-reopen via debounce+fetch (`aria-expanded=false`) | PASS |
+| S5 post-prefill | re-focusing the field without editing does not reopen | PASS |
+| S5 post-prefill | blur/refocus cycle without editing does not reopen | PASS |
+| S5 post-prefill | genuine edit (text replaced) restores normal suggestion flow `[Milk, Buttermilk, Oat Milk]` | PASS |
+| S5 post-prefill | post-edit pick restores Milk + fridge ahead of save | PASS |
+
+Confirmation-only persistence repeated identically: inventory rows moved
+exactly **4 → 5** across the full session — written only by the explicit save.
+
+Automated suites at `7cde136`: focused route+suggestion suites 40/40; full
+serial suite **160/160 pass**.
