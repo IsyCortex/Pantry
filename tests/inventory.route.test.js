@@ -599,3 +599,134 @@ test('expiration overview is not shown for a truly empty inventory', async () =>
     server.close();
   }
 });
+// ---------------------------------------------------------------------------
+// Ticket 4.1 — item-name suggestions endpoint and entry-form integration
+// ---------------------------------------------------------------------------
+
+test('GET /inventory/name-suggestions ranks household entries and includes prior (inactive) entries', async () => {
+  await resetInventoryTable();
+  // Active entries for Milk (fridge twice, pantry once).
+  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: null, location: 'fridge', expirationDate: '2026-09-01', dateType: 'best_before', lifecycleStatus: 'active' });
+  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: null, location: 'pantry', expirationDate: null, dateType: null, lifecycleStatus: 'active' });
+  await insertInventoryItem({ name: 'milk ', quantity: 1, unit: null, location: 'fridge', expirationDate: null, dateType: null, lifecycleStatus: 'active' });
+  // Prior entries: a removed product the household used before…
+  await insertInventoryItem({ name: 'Oat Milk', quantity: 1, unit: null, location: 'freezer', expirationDate: null, dateType: null, lifecycleStatus: 'used_up' });
+  // …and a similar-but-distinct active name that must stay its own candidate.
+  await insertInventoryItem({ name: 'Buttermilk', quantity: 1, unit: null, location: 'fridge', expirationDate: null, dateType: null, lifecycleStatus: 'active' });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const before = await pool.query('SELECT COUNT(*)::int AS count FROM inventory_items');
+    const response = await fetch(`http://127.0.0.1:${port}/inventory/name-suggestions?q=milk`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type') || '', /application\/json/);
+    const data = await response.json();
+    assert.equal(data.query, 'milk');
+
+    // Ranking: 'milk ' and Milk dedupe to one top candidate (startsWith,
+    // highest frequency); containing names follow, prior entries included.
+    assert.deepEqual(data.suggestions.map((suggestion) => suggestion.name), ['Milk', 'Buttermilk', 'Oat Milk']);
+    assert.deepEqual(data.suggestions[0], { name: 'Milk', location: 'fridge' });
+    assert.deepEqual(data.suggestions[2], { name: 'Oat Milk', location: 'freezer' });
+
+    // Suggestions never create anything: read-only endpoint over stored data.
+    const after = await pool.query('SELECT COUNT(*)::int AS count FROM inventory_items');
+    assert.equal(after.rows[0].count, before.rows[0].count);
+  } finally {
+    server.close();
+  }
+});
+
+test('GET /inventory/name-suggestions treats blank or unknown queries as an empty candidate list', async () => {
+  await resetInventoryTable();
+  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: null, location: 'fridge', expirationDate: null, dateType: null, lifecycleStatus: 'active' });
+
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    for (const query of ['', '%20%20', 'qwertyzz']) {
+      const response = await fetch(`http://127.0.0.1:${port}/inventory/name-suggestions?q=${query}`);
+      assert.equal(response.status, 200);
+      const data = await response.json();
+      assert.deepEqual(data.suggestions, []);
+    }
+  } finally {
+    server.close();
+  }
+});
+
+test('GET /inventory/name-suggestions degrades safely when suggestions fail', async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  const app = createApp({
+    nameSuggestionProvider: async () => {
+      throw new Error('SUGGESTIONS_TEST_FAILURE');
+    }
+  });
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/inventory/name-suggestions?q=mil`);
+    assert.equal(response.status, 500);
+    const data = await response.json();
+    assert.match(data.error, /unavailable/i);
+    assert.doesNotMatch(JSON.stringify(data), /SELECT|postgres|inventory_items/i);
+  } finally {
+    server.close();
+    console.error = originalConsoleError;
+  }
+});
+
+test('manual batch form renders the accessible suggestion hooks and never prefills by itself', async () => {
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/batches/manual`);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+    // Combobox/listbox wiring exists for every row's Name field.
+    assert.match(body, /data-enter-target="name"/);
+    assert.match(body, /role="combobox"/);
+    assert.match(body, /aria-controls="name-suggestions-0"/);
+    assert.match(body, /role="listbox"/);
+    assert.match(body, /aria-label="Previously used item names"/);
+    // The client reads candidates from the read-only JSON endpoint…
+    assert.match(body, /\/inventory\/name-suggestions\?q=/);
+    // …and selection only prefills visible fields; saving stays explicit.
+    assert.match(body, /Save to inventory/);
+    assert.doesNotMatch(body.replace(/<%[\s\S]*?%>/g, ''), /auto(confirm|create)/i);
+  } finally {
+    server.close();
+  }
+});
+
+test('every manual batch Name input carries the data-name-suggest hook the initializer selects (T4.1 regression)', async () => {
+  const app = createApp();
+  const server = app.listen(0);
+  const { port } = server.address();
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/batches/manual`);
+    const body = await response.text();
+    assert.equal(response.status, 200);
+
+    // Rendered hook must exist on EVERY name input regardless of row count,
+    // and must be exactly the attribute the inline initializer selects —
+    // otherwise the combobox silently initializes zero inputs (the T4.1
+    // regression this assertion pins).
+    const inputTags = body.match(/<input\b[^>]*>/g) || [];
+    const nameInputs = inputTags.filter((tag) =>
+      tag.includes('name="rows[') && tag.includes('data-enter-target="name"'));
+    assert.ok(nameInputs.length >= 1, 'manual batch form renders at least one Name input');
+    for (const tag of nameInputs) {
+      assert.match(tag, /data-name-suggest(=|[\s>])/, 'Name input must carry the data-name-suggest hook');
+    }
+    assert.match(body, /querySelectorAll\('input\[data-name-suggest\]'\)/,
+      'initializer must select the same hook the markup renders');
+  } finally {
+    server.close();
+  }
+});

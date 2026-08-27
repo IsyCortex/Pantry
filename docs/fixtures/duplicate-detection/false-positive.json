@@ -1,0 +1,15 @@
+{
+  "description": "False positives for draft-vs-inventory duplicate detection: superficially similar names that must NOT warn because they are distinct products, and the length guard keeping very short lookalikes silent.",
+  "activeItems": [
+    { "id": 101, "name": "Milk", "quantity": 2, "unit": "package", "location": "fridge", "expirationDate": "2026-09-10", "dateType": "best_before" },
+    { "id": 102, "name": "Oat Milk", "quantity": 1, "unit": "carton", "location": "freezer", "expirationDate": "2026-08-15", "dateType": "best_before" },
+    { "id": 103, "name": "Butter", "quantity": 250, "unit": "g", "location": "fridge", "expirationDate": null, "dateType": null }
+  ],
+  "cases": [
+    { "draftName": "Buttermilk", "expectMatch": false, "note": "contains 'milk' but is a different product - substring similarity must not fire" },
+    { "draftName": "Whole Milk", "expectMatch": false, "note": "shares words with Milk/Oat Milk yet is a deliberately different purchase" },
+    { "draftName": "Coconut Milk", "expectMatch": false, "note": "another lookalike product sharing the word milk" },
+    { "draftName": "Butterscotch", "expectMatch": false, "note": "shares prefix with Butter; edit distance far above the typo threshold" },
+    { "draftName": "Tea", "expectMatch": false, "note": "one character from 'Pea' but below the 4-character length guard for typo matching" }
+  ]
+}

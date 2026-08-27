@@ -1,0 +1,20 @@
+{
+  "description": "True positives for draft-vs-inventory duplicate detection: spellings that almost certainly denote the same product. Quantity/unit/location/date differences NEVER suppress a warning - those fields are displayed for human judgment only and are never combined.",
+  "activeItems": [
+    { "id": 201, "name": "Milk", "quantity": 2, "unit": "package", "location": "fridge", "expirationDate": "2026-09-10", "dateType": "best_before" },
+    { "id": 202, "name": "Oat Milk", "quantity": 1, "unit": "carton", "location": "freezer", "expirationDate": "2026-08-15", "dateType": "best_before" },
+    { "id": 203, "name": "Tomato", "quantity": 3, "unit": "piece", "location": "pantry", "expirationDate": "2026-06-01", "dateType": "use_by" },
+    { "id": 204, "name": "Egg", "quantity": 10, "unit": "piece", "location": "fridge", "expirationDate": null, "dateType": null },
+    { "id": 205, "name": "Yoghurt", "quantity": 4, "unit": "cup", "location": "fridge", "expirationDate": "2026-07-01", "dateType": "use_by" },
+    { "id": 206, "name": "Butter", "quantity": 250, "unit": "g", "location": "fridge", "expirationDate": null, "dateType": null }
+  ],
+  "cases": [
+    { "draftName": "MILK", "expectMatch": true, "expectedRule": "same_name", "matchedId": 201, "note": "case-insensitive equality with different stored casing" },
+    { "draftName": "  Oat   Milk ", "expectMatch": true, "expectedRule": "same_name", "matchedId": 202, "note": "internal whitespace differences collapse for matching only" },
+    { "draftName": "Tomatoes", "expectMatch": true, "expectedRule": "plural_form", "matchedId": 203, "note": "whole trailing plurality ending collapses" },
+    { "draftName": "Eggs", "expectMatch": true, "expectedRule": "plural_form", "matchedId": 204, "note": "singular stored, plural drafted" },
+    { "draftName": "miik", "expectMatch": true, "expectedRule": "likely_typo", "matchedId": 201, "note": "single-character typo of a 4+ character name" },
+    { "draftName": "yohurt", "expectMatch": true, "expectedRule": "likely_typo", "matchedId": 205, "note": "deletion typo; length guard satisfied on both sides" },
+    { "draftName": "Butter", "expectMatch": true, "expectedRule": "same_name", "matchedId": 206, "note": "quantities/locations/dates differ completely yet the warning STILL fires - differences are information, never a blocker or a merger" }
+  ]
+}

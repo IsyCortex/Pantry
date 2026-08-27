@@ -1,6 +1,9 @@
 const { createInventoryItem, getInventoryItemById, updateInventoryItem, transitionInventoryLifecycle, listActiveInventoryItems } = require('../db/inventory');
 const { validateInventoryItem } = require('../validation/inventory');
 const { applyExpirationStatus, orderInventoryItemsForDisplay } = require('./expiration-status-service');
+const { listInventoryItemNameLocations } = require('../db/inventory');
+const { buildNameSuggestions } = require('./name-suggestion-service');
+const { findDraftRowDuplicates, findRowDuplicateMatches } = require('./duplicate-detection-service');
 
 async function createConfirmedInventoryItem(input, client) {
   const validation = validateInventoryItem(input);
@@ -136,11 +139,37 @@ function filterInventoryItems(displayItems, filters = {}) {
   });
 }
 
+// Ticket 4.1 — read-only name suggestions from existing/prior entries.
+// Aggregation and ranking live in the pure suggestion service; this wrapper
+// only supplies the stored entry pairs and never performs any write.
+async function getNameSuggestions(rawQuery) {
+  const entries = await listInventoryItemNameLocations();
+  return buildNameSuggestions(entries, rawQuery);
+}
+
+// Ticket 4.2 — advisory duplicate lookup against ACTIVE inventory. Both
+// wrappers are purely read-side: they feed warnings on the manual batch
+// editor and the /inventory/duplicate-check endpoint; nothing here writes,
+// merges, or blocks. Failures of the underlying loader must be handled by
+// callers (warnings degrade gracefully instead of breaking the editor).
+async function getNameDuplicateWarnings(rawQuery) {
+  const items = await getActiveInventoryForDisplay();
+  return findRowDuplicateMatches(String(rawQuery ?? ''), items);
+}
+
+async function getDraftRowDuplicateWarnings(draftRows) {
+  const items = await getActiveInventoryForDisplay();
+  return findDraftRowDuplicates(Array.isArray(draftRows) ? draftRows : [], items);
+}
+
 module.exports = {
   createConfirmedInventoryItem,
   getConfirmedInventoryItem,
   updateConfirmedInventoryItem,
   markInventoryItemRemoved,
   getActiveInventoryForDisplay,
-  filterInventoryItems
+  filterInventoryItems,
+  getNameSuggestions,
+  getNameDuplicateWarnings,
+  getDraftRowDuplicateWarnings
 };
