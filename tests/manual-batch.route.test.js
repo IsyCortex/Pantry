@@ -209,3 +209,27 @@ test('GET /inventory/duplicate-check exposes matches as read-only JSON', async (
     server.close();
   }
 });
+
+test('rendered page declares the duplicate-check URL consumed by the live watcher', async () => {
+  await resetAllTables();
+
+  const app = createApp();
+  const { server, base } = startServer(app);
+  try {
+    const response = await fetch(`${base}/batches/manual`);
+    const body = await response.text();
+
+    // The client-side watcher builds its requests from this literal; if it
+    // drifts away from the actual route the advisory catch swallows the
+    // resulting failure and users silently lose every live warning.
+    assert.match(body, /const CHECK_URL = '\/inventory\/duplicate-check\?q='/);
+    // The declared path must exist and answer with the documented JSON
+    // contract on the same application instance.
+    const probe = await fetch(`${base}/inventory/duplicate-check?q=%20`);
+    assert.equal(probe.status, 200);
+    const payload = await probe.json();
+    assert.ok(Array.isArray(payload.matches));
+  } finally {
+    server.close();
+  }
+});

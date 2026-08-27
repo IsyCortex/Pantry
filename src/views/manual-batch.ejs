@@ -182,6 +182,9 @@
         // batch still has to be saved explicitly ("Save to inventory").
         (function () {
           const SUGGESTION_URL = '/inventory/name-suggestions?q=';
+          // Ticket 4.2 — read-only duplicate lookup backing the live warnings;
+          // must stay in sync with the GET /inventory/duplicate-check route.
+          const CHECK_URL = '/inventory/duplicate-check?q=';
           const DEBOUNCE_MS = 180;
 
           function setupCombobox(input) {
