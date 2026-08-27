@@ -268,12 +268,27 @@
                 }
               }
 
+              // Notify other row listeners of the prefill. Drop any pending
+              // debounced load first: a keystroke issued just before the
+              // selection must not resolve afterwards and reopen the list
+              // over the freshly applied value.
+              clearTimeout(debounceTimer);
               input.dispatchEvent(new Event('input', { bubbles: true }));
               setOpen(false);
               input.focus();
             }
 
-            input.addEventListener('input', () => {
+            input.addEventListener('input', (event) => {
+              // Suggestions react only to genuine edits of the field. A
+              // programmatic input event (choose() dispatches one so other
+              // row logic notices the prefill) would otherwise reschedule a
+              // load for the just-applied name and pop the list open again:
+              // after a selection the list stays closed until the content is
+              // actually edited again.
+              if (!event.isTrusted) {
+                clearTimeout(debounceTimer);
+                return;
+              }
               clearTimeout(debounceTimer);
               const queryText = input.value;
               if (!queryText.trim()) {
