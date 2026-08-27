@@ -53,3 +53,46 @@ id | name     | qty | location | exp        | lifecycle_status
 Both mandated persistence properties hold: saving created a separate
 entry instead of merging, and quantities plus expiration dates of the
 existing items are byte-for-byte unchanged.
+
+## 4. Addendum — AI draft-review page (commit `7c9a50a`)
+
+Acceptance required the identical advisory comparison on the canonical AI
+draft-review page, which until then rendered no duplicate warnings at all.
+`7c9a50a` routes every `batch-review` render path — normal GET,
+saved-corrections redirect, validation-error render, invalid-state render —
+through **one** shared helper that consults the existing duplicate service, and
+reuses the manual editor's warning presentation verbatim. Excluded-row
+controls and confirmation availability are untouched.
+
+Environment: same Chromium 151.0.7922.173 (headless, raw CDP), ≈1280×900.
+Isolated database seeded with one **active** `Milk` (qty 2, fridge, best
+before 2026-09-10). The deterministic offline analyzer
+(`ANALYZER_PROVIDER=offline` overriding the repo `.env`) processed the
+proposal text `Two packages of milk.` — which additionally exercises the
+case-insensitive `same_name` rule live (lowercase proposal vs stored `Milk`).
+
+**12/12 PASS:**
+
+| Scenario | Assertion | Result |
+| --- | --- | --- |
+| S1 nl-proposal | natural-language form accepts offline proposal text | PASS |
+| S1 nl-proposal | analyzer created review batch and app landed on it | PASS |
+| S2 warnings | review page renders live duplicate warning for Milk proposal | PASS |
+| S2 warnings | warning names stored item + identical-name rule + keep-both hint | PASS |
+| S2 warnings | non-matching rows stay closed | PASS |
+| S2 advisory | exclude/include control present for warned row | PASS |
+| S2 advisory | confirmation remains available and enabled | PASS |
+| S2 proposals | proposal carries analyzer-parsed values (name milk, quantity 2) | PASS |
+| S3 confirm | confirmation form submitted despite active duplicate warning | PASS |
+| S3 confirm | validation-error render keeps duplicate warnings and asks for the missing location | PASS |
+| S3 confirm | saved-corrections render keeps duplicate warnings | PASS |
+| S3 confirm | confirmation proceeds after correction despite remaining duplicate warning | PASS |
+
+Persistence proof straight from the database after the browser save: the
+stored `Milk` row stayed **byte-identical** (qty 2, exp 2026-09-10) while the
+confirmed proposal landed as a **separate** row (`milk`, qty 2, no expiry) —
+inventory moved exactly **1 → 2**; nothing merged, no quantities or dates
+combined. Confirmation succeeded while the warning was on screen.
+
+Automated gates at `7c9a50a`: focused suites **61/61**; full serial suite
+`node --test --test-concurrency=1` → **181/181 pass, 0 fail** (baseline 177).
