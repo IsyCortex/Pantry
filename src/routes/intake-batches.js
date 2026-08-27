@@ -96,6 +96,30 @@ function createIntakeBatchRouter(options = {}) {
     });
   }
 
+  // Ticket 4.2 — single render path for the AI draft-review page, mirroring
+  // renderManualBatch: before EVERY render (normal GET, saved-corrections
+  // target, validation-error, confirmation-error) each review row is compared
+  // with the ACTIVE inventory and gets advisory duplicate warnings attached.
+  // Warnings never influence validation or confirmation semantics: rows stay
+  // includable/excludable via their own control, confirmation stays
+  // available, and confirming continues to create separate inventory entries
+  // without combining quantities or dates.
+  async function sendBatchReview(res, locals, status = 200) {
+    const rows = Array.isArray(locals.rows) ? locals.rows : [];
+    let warnings;
+    try {
+      const activeItems = await activeInventoryLoader();
+      warnings = findDraftRowDuplicates(rows.map((row) => ({ name: row.name })), activeItems);
+    } catch (error) {
+      console.error(error.stack || error);
+      warnings = rows.map(() => []);
+    }
+    res.status(status).render('batch-review', {
+      ...locals,
+      rows: rows.map((row, index) => ({ ...row, duplicateWarnings: warnings[index] || [] }))
+    });
+  }
+
   const router = express.Router();
 
   router.get('/batches/manual', async (req, res, next) => {
@@ -279,7 +303,7 @@ function createIntakeBatchRouter(options = {}) {
         return;
       }
 
-      res.status(200).render('batch-review', {
+      await sendBatchReview(res, {
         ...createReviewLocals({
           batchId: batch.id,
           rows: batch.rows,
@@ -308,15 +332,15 @@ function createIntakeBatchRouter(options = {}) {
       res.redirect(`/batches/${saved.id}/review?notice=corrections_saved`);
     } catch (error) {
       if (error.code === 'VALIDATION_FAILED') {
-        res.status(400).render('batch-review', {
+        await sendBatchReview(res, {
           ...createReviewLocals({
-          batchId: req.params.batchId,
-          rows,
-          defaultLocation,
-          errors: error.details
+            batchId: req.params.batchId,
+            rows,
+            defaultLocation,
+            errors: error.details
           }),
           structuredFieldErrors: buildReviewErrorDetails(rows)
-        });
+        }, 400);
         return;
       }
 
@@ -331,7 +355,7 @@ function createIntakeBatchRouter(options = {}) {
     } catch (error) {
       if (error.code === 'VALIDATION_FAILED') {
         const batch = await getManualDraftBatch(Number(req.params.batchId));
-        res.status(400).render('batch-review', {
+        await sendBatchReview(res, {
           ...createReviewLocals({
             batchId: req.params.batchId,
             rows: batch ? batch.rows : [],
@@ -339,13 +363,13 @@ function createIntakeBatchRouter(options = {}) {
             errors: error.details
           }),
           structuredFieldErrors: buildReviewErrorDetails(batch ? batch.rows : [])
-        });
+        }, 400);
         return;
       }
 
       if (error.code === 'INVALID_STATE_TRANSITION') {
         const batch = await getManualDraftBatch(Number(req.params.batchId));
-        res.status(409).render('batch-review', {
+        await sendBatchReview(res, {
           ...createReviewLocals({
             batchId: req.params.batchId,
             rows: batch ? batch.rows : [],
@@ -353,7 +377,7 @@ function createIntakeBatchRouter(options = {}) {
             errors: [error.message]
           }),
           structuredFieldErrors: buildReviewErrorDetails(batch ? batch.rows : [])
-        });
+        }, 409);
         return;
       }
 

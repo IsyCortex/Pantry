@@ -98,6 +98,22 @@
                 </div>
               <% } %>
 
+              <% const rowDuplicateWarnings = Array.isArray(row.duplicateWarnings) ? row.duplicateWarnings : []; %>
+              <section class="duplicate-warning" data-row-duplicate-warning="<%= index %>" aria-live="polite" <%= rowDuplicateWarnings.length === 0 ? 'hidden' : '' %>>
+                <% if (rowDuplicateWarnings.length > 0) { %>
+                  <p class="duplicate-warning-title">Possible duplicates already in your inventory</p>
+                  <ul class="duplicate-warning-list">
+                    <% rowDuplicateWarnings.forEach((warning) => { %>
+                      <li>
+                        <span class="suggestion-name"><%= warning.matchedItem.name %></span><% if (warning.matchedItem.quantity != null) { %><span class="suggestion-location"> · <%= warning.matchedItem.quantity %><%= warning.matchedItem.unit ? ' ' + warning.matchedItem.unit : '' %></span><% } %><% if (warning.matchedItem.location) { %><span class="suggestion-location"> · <%= warning.matchedItem.location %></span><% } %><% if (warning.matchedItem.expirationDate) { %><span class="suggestion-location"> · expires <%= warning.matchedItem.expirationDate %></span><% } %>
+                        <span class="duplicate-rule subtle"><%= warning.ruleDetail %></span>
+                      </li>
+                    <% }) %>
+                  </ul>
+                  <p class="subtle">Saving keeps both entries side by side — nothing is merged automatically.</p>
+                <% } %>
+              </section>
+
               <% if (row.attentionReasons.length > 0) { %>
                 <div class="warnings">
                   <h3>Attention reasons</h3>
