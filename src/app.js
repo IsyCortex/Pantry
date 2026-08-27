@@ -22,7 +22,10 @@ function createApp(options = {}) {
     analyzerProviderKind: options.analyzerProviderKind,
     analysisTimeoutMs: options.analysisTimeoutMs
   }));
-  app.use(createInventoryRouter({ inventoryLoader: options.inventoryLoader }));
+  app.use(createInventoryRouter({
+    inventoryLoader: options.inventoryLoader,
+    nameSuggestionProvider: options.nameSuggestionProvider
+  }));
 
   app.use((error, _req, res, _next) => {
     if (error) {

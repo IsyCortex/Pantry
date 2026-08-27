@@ -33,36 +33,20 @@
           </label>
           <button type="submit" name="action" value="add-row">Add row</button>
           <button type="submit" name="action" value="save">Save draft batch</button>
-          <button type="submit" name="action" value="save-to-inventory" class="primary-btn">Save to inventory</button>
+          <button type="submit" name="action" value="save-to-inventory" class="primary-btn" title="Save to inventory (Ctrl+Enter)">Save to inventory</button>
         </div>
 
         <section class="batch-grid">
           <% rows.forEach((row, index) => { %>
             <article class="batch-row">
-              <div class="row-actions">
-                <strong>Row <%= index + 1 %></strong>
-                <button type="submit" name="action" value="move-up" name="action" formaction="/batches/manual" aria-label="Move row <%= index + 1 %> up">
-                  <span class="sr-only">Move row <%= index + 1 %> up</span>Move up
-                </button>
-                <button type="submit" name="action" value="move-down" formaction="/batches/manual" name="action" aria-label="Move row <%= index + 1 %> down">
-                  <span class="sr-only">Move row <%= index + 1 %> down</span>Move down
-                </button>
-                <button type="submit" name="action" value="duplicate-row" formaction="/batches/manual" name="action" aria-label="Duplicate row <%= index + 1 %>">
-                  <span class="sr-only">Duplicate row <%= index + 1 %></span>Duplicate
-                </button>
-                <button type="submit" name="action" value="remove-row" formaction="/batches/manual" name="action" aria-label="Remove row <%= index + 1 %>">
-                  <span class="sr-only">Remove row <%= index + 1 %></span>Remove
-                </button>
-                <button type="submit" name="action" value="enter-row" formaction="/batches/manual" name="action" aria-label="Advance from row <%= index + 1 %>">
-                  <span class="sr-only">Advance from row <%= index + 1 %></span>Enter advances
-                </button>
-                <button type="submit" class="sr-only" name="actionRowIndex" value="<%= index %>" data-row-submit-index="<%= index %>">row-submit-index</button>
-              </div>
-
               <div class="field-grid">
                 <label>
                   Name
-                  <input name="rows[<%= index %>][name]" value="<%= row.name %>" data-enter-target="name" />
+                                    <input name="rows[<%= index %>][name]" value="<%= row.name %>" data-enter-target="name" data-name-suggest
+                         autocomplete="off" role="combobox" aria-autocomplete="list"
+                         aria-expanded="false" aria-controls="name-suggestions-<%= index %>" <%= focusRow === index ? 'autofocus' : '' %> />
+                  <ul class="name-suggestions" id="name-suggestions-<%= index %>" role="listbox"
+                      aria-label="Previously used item names" hidden></ul>
                 </label>
 
                 <label>
@@ -105,6 +89,38 @@
                   </select>
                 </label>
               </div>
+
+              <div class="row-actions">
+                <strong>Row <%= index + 1 %></strong>
+                <!-- Ticket 4.3: each button targets its own row via ?row= so
+                     the editor is correct without JavaScript. Exactly one
+                     name="action" per button — previously duplicated, which
+                     collapsed every button's value to its move-up sibling's.
+                     DOM order follows the fields so keyboard tabbing reaches
+                     the row's inputs before its action buttons; CSS order
+                     keeps the actions visually on top. -->
+                <button type="submit" name="action" value="move-up" formaction="/batches/manual?row=<%= index %>" aria-label="Move row <%= index + 1 %> up"><span class="sr-only">Move row <%= index + 1 %> up</span>Move up</button>
+                <button type="submit" name="action" value="move-down" formaction="/batches/manual?row=<%= index %>" aria-label="Move row <%= index + 1 %> down"><span class="sr-only">Move row <%= index + 1 %> down</span>Move down</button>
+                <button type="submit" name="action" value="duplicate-row" formaction="/batches/manual?row=<%= index %>" aria-label="Duplicate row <%= index + 1 %>"><span class="sr-only">Duplicate row <%= index + 1 %></span>Duplicate</button>
+                <button type="submit" name="action" value="remove-row" formaction="/batches/manual?row=<%= index %>" aria-label="Remove row <%= index + 1 %>"><span class="sr-only">Remove row <%= index + 1 %></span>Remove</button>
+                <button type="submit" name="action" value="enter-row" formaction="/batches/manual?row=<%= index %>" data-enter-row="<%= index %>" aria-label="Advance from row <%= index + 1 %> (press Enter in the name field)"><span class="sr-only">Advance from row <%= index + 1 %> by pressing Enter in the name field</span>Enter advances</button>
+              </div>
+
+              <% const rowWarnings = Array.isArray(row.duplicateWarnings) ? row.duplicateWarnings : []; %>
+              <section class="duplicate-warning" data-duplicate-warning="<%= index %>" aria-live="polite" <%= rowWarnings.length === 0 ? 'hidden' : '' %>>
+                <% if (rowWarnings.length > 0) { %>
+                  <p class="duplicate-warning-title">Possible duplicates already in your inventory</p>
+                  <ul class="duplicate-warning-list">
+                    <% rowWarnings.forEach((warning) => { %>
+                      <li>
+                        <span class="suggestion-name"><%= warning.matchedItem.name %></span><% if (warning.matchedItem.quantity != null) { %><span class="suggestion-location"> · <%= warning.matchedItem.quantity %><%= warning.matchedItem.unit ? ' ' + warning.matchedItem.unit : '' %></span><% } %><% if (warning.matchedItem.location) { %><span class="suggestion-location"> · <%= warning.matchedItem.location %></span><% } %><% if (warning.matchedItem.expirationDate) { %><span class="suggestion-location"> · expires <%= warning.matchedItem.expirationDate %></span><% } %>
+                        <span class="duplicate-rule subtle"><%= warning.ruleDetail %></span>
+                      </li>
+                    <% }) %>
+                  </ul>
+                  <p class="subtle">Saving keeps both entries side by side — nothing is merged automatically.</p>
+                <% } %>
+              </section>
             </article>
           <% }) %>
         </section>
@@ -115,6 +131,23 @@
           if (!form) return;
 
           form.addEventListener('keydown', (event) => {
+            // Data-entry accelerator: Ctrl+Enter anywhere in the editor
+            // submits the batch straight to inventory. The toolbar sits above
+            // the rows, so tabbing back to it would otherwise be the only
+            // keyboard path after the last field of the last row.
+            if (event.key === 'Enter' && event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+              const saveToInventory = form.querySelector('button[name="action"][value="save-to-inventory"]');
+              if (saveToInventory) {
+                event.preventDefault();
+                if (typeof form.requestSubmit === 'function') {
+                  form.requestSubmit(saveToInventory);
+                } else {
+                  form.submit();
+                }
+                return;
+              }
+            }
+
             if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) {
               return;
             }
@@ -152,6 +185,319 @@
               form.submit();
             }
           });
+        })();
+      </script>
+      <script>
+        // Ticket 4.1 — accessible name-suggestion combobox for each entry
+        // row's Name field. Progressive enhancement: the form works fully
+        // without JavaScript. Suggestions are candidates only; choosing one
+        // merely prefills the visible, editable fields of that row and the
+        // batch still has to be saved explicitly ("Save to inventory").
+        (function () {
+          const SUGGESTION_URL = '/inventory/name-suggestions?q=';
+          // Ticket 4.2 — read-only duplicate lookup backing the live warnings;
+          // must stay in sync with the GET /inventory/duplicate-check route.
+          const CHECK_URL = '/inventory/duplicate-check?q=';
+          const DEBOUNCE_MS = 180;
+
+          function setupCombobox(input) {
+            const listId = input.getAttribute('aria-controls');
+            const list = document.getElementById(listId);
+            if (!list) return;
+
+            let options = [];
+            let activeIndex = -1;
+            let debounceTimer = null;
+
+            function setOpen(open) {
+              list.hidden = !open;
+              input.setAttribute('aria-expanded', open ? 'true' : 'false');
+              if (!open) {
+                activeIndex = -1;
+                input.removeAttribute('aria-activedescendant');
+              }
+            }
+
+            function paintActive() {
+              Array.prototype.forEach.call(list.children, function (child, index) {
+                child.classList.toggle('is-active', index === activeIndex);
+              });
+              if (activeIndex >= 0) {
+                input.setAttribute('aria-activedescendant', list.id + '-opt-' + activeIndex);
+              } else {
+                input.removeAttribute('aria-activedescendant');
+              }
+            }
+
+            function render(suggestions) {
+              list.textContent = '';
+              options = [];
+              activeIndex = -1;
+              suggestions.forEach(function (suggestion, index) {
+                const item = document.createElement('li');
+                item.id = list.id + '-opt-' + index;
+                item.setAttribute('role', 'option');
+                item.dataset.name = suggestion.name || '';
+                item.dataset.location = suggestion.location || '';
+
+                const name = document.createElement('span');
+                name.className = 'suggestion-name';
+                name.textContent = suggestion.name || '';
+                item.appendChild(name);
+
+                if (suggestion.location) {
+                  const location = document.createElement('span');
+                  location.className = 'suggestion-location';
+                  location.textContent = '\u00b7 ' + suggestion.location;
+                  item.appendChild(location);
+                }
+
+                const hint = document.createElement('span');
+                hint.className = 'suggestion-hint';
+                hint.textContent = 'Enter to prefill';
+                hint.setAttribute('aria-hidden', 'true');
+                item.appendChild(hint);
+
+                list.appendChild(item);
+                options.push(item);
+              });
+
+              setOpen(options.length > 0);
+              if (options.length) {
+                paintActive();
+              }
+            }
+
+            async function loadSuggestions(queryText) {
+              try {
+                const response = await fetch(SUGGESTION_URL + encodeURIComponent(queryText), {
+                  headers: { Accept: 'application/json' }
+                });
+                if (!response.ok) {
+                  setOpen(false);
+                  return;
+                }
+                const data = await response.json();
+                render(Array.isArray(data.suggestions) ? data.suggestions : []);
+              } catch (error) {
+                setOpen(false);
+              }
+            }
+
+            function choose(item) {
+              input.value = item.dataset.name;
+
+              const row = input.closest('.batch-row') || input.closest('article');
+              const locationSelect = row ? row.querySelector('select[name$="[location]"]') : null;
+              const wantedLocation = item.dataset.location || '';
+              if (locationSelect && wantedLocation) {
+                const hasOption = Array.prototype.some.call(locationSelect.options, function (option) {
+                  return option.value === wantedLocation;
+                });
+                if (hasOption) {
+                  locationSelect.value = wantedLocation;
+                  locationSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+              }
+
+              // Notify other row listeners of the prefill. Drop any pending
+              // debounced load first: a keystroke issued just before the
+              // selection must not resolve afterwards and reopen the list
+              // over the freshly applied value.
+              clearTimeout(debounceTimer);
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              // Ticket 4.2 — let the duplicate-warning watcher re-check the
+              // applied name immediately (synthetic input events are ignored
+              // by watchers on purpose, so a dedicated explicit signal).
+              input.dispatchEvent(new CustomEvent('name-prefilled', {
+                bubbles: true,
+                detail: { name: item.dataset.name }
+              }));
+              setOpen(false);
+              input.focus();
+            }
+
+            input.addEventListener('input', (event) => {
+              // Suggestions react only to genuine edits of the field. A
+              // programmatic input event (choose() dispatches one so other
+              // row logic notices the prefill) would otherwise reschedule a
+              // load for the just-applied name and pop the list open again:
+              // after a selection the list stays closed until the content is
+              // actually edited again.
+              if (!event.isTrusted) {
+                clearTimeout(debounceTimer);
+                return;
+              }
+              clearTimeout(debounceTimer);
+              const queryText = input.value;
+              if (!queryText.trim()) {
+                setOpen(false);
+                return;
+              }
+              debounceTimer = setTimeout(() => { loadSuggestions(queryText); }, DEBOUNCE_MS);
+            });
+
+            // Runs after the row-advance keyboard handler registered earlier
+            // on the same form; stopping propagation keeps both behaviors
+            // from fighting while the suggestion list is open.
+            input.addEventListener('keydown', (event) => {
+              const isOpen = !list.hidden;
+
+              if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && isOpen && options.length) {
+                event.preventDefault();
+                event.stopPropagation();
+                const direction = event.key === 'ArrowDown' ? 1 : -1;
+                activeIndex = Math.min(Math.max(activeIndex + direction, 0), options.length - 1);
+                paintActive();
+                return;
+              }
+
+              if (event.key === 'Enter' && isOpen && activeIndex >= 0) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                choose(options[activeIndex]);
+                return;
+              }
+
+              if (event.key === 'Escape' && isOpen) {
+                event.preventDefault();
+                event.stopPropagation();
+                setOpen(false);
+              }
+            });
+
+            list.addEventListener('mousedown', (event) => {
+              const target = event.target.closest('[role="option"]');
+              if (!target) return;
+              event.preventDefault(); // keep focus in the input while choosing
+              choose(target);
+            });
+
+            input.addEventListener('focusout', (event) => {
+              if (!list.contains(event.relatedTarget)) {
+                setOpen(false);
+              }
+            });
+          }
+
+          document.querySelectorAll('input[data-name-suggest]').forEach(setupCombobox);
+
+          // Ticket 4.2 — live duplicate warnings per Name field, mirroring
+          // the server-rendered warnings so feedback appears while typing.
+          // Strictly informational: no control is ever disabled or altered,
+          // and saving behavior is untouched. Without JavaScript the
+          // server-rendered warnings on every page load still cover review.
+          function setupDuplicateWarning(input) {
+            const controlsIndex = input.getAttribute('aria-controls') || '';
+            const match = controlsIndex.match(/(\d+)$/);
+            if (!match) return;
+            const container = document.querySelector('[data-duplicate-warning="' + Number(match[1]) + '"]');
+            if (!container) return;
+
+            let checkTimer = null;
+
+            function hide() {
+              container.hidden = true;
+              container.textContent = '';
+            }
+
+            function renderMatches(matches) {
+              container.textContent = '';
+              if (!Array.isArray(matches) || matches.length === 0) {
+                container.hidden = true;
+                return;
+              }
+
+              const title = document.createElement('p');
+              title.className = 'duplicate-warning-title';
+              title.textContent = 'Possible duplicates already in your inventory';
+              container.appendChild(title);
+
+              const ul = document.createElement('ul');
+              ul.className = 'duplicate-warning-list';
+              matches.forEach(function (match) {
+                const stored = match && match.matchedItem ? match.matchedItem : {};
+                const li = document.createElement('li');
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'suggestion-name';
+                nameSpan.textContent = String(stored.name == null ? '' : stored.name);
+                li.appendChild(nameSpan);
+
+                const parts = [];
+                if (stored.quantity != null) {
+                  parts.push(String(stored.quantity) + (stored.unit ? ' ' + stored.unit : ''));
+                }
+                if (stored.location) parts.push(String(stored.location));
+                if (stored.expirationDate) parts.push('expires ' + String(stored.expirationDate));
+                if (parts.length) {
+                  const meta = document.createElement('span');
+                  meta.className = 'suggestion-location';
+                  meta.textContent = ' \u00b7 ' + parts.join(' \u00b7 ');
+                  li.appendChild(meta);
+                }
+
+                if (match.ruleDetail) {
+                  const rule = document.createElement('span');
+                  rule.className = 'duplicate-rule subtle';
+                  rule.textContent = ' ' + String(match.ruleDetail);
+                  li.appendChild(rule);
+                }
+                ul.appendChild(li);
+              });
+              container.appendChild(ul);
+
+              const hint = document.createElement('p');
+              hint.className = 'subtle';
+              hint.textContent = 'Saving keeps both entries side by side \u2014 nothing is merged automatically.';
+              container.appendChild(hint);
+
+              container.hidden = false;
+            }
+
+            async function requestCheck(rawName) {
+              try {
+                const response = await fetch(CHECK_URL + encodeURIComponent(rawName), {
+                  headers: { Accept: 'application/json' }
+                });
+                if (!response.ok) {
+                  return;
+                }
+                const data = await response.json();
+                renderMatches(Array.isArray(data.matches) ? data.matches : []);
+              } catch (error) {
+                // Advisory only: network problems never surface as errors.
+              }
+            }
+
+            function scheduleCheck(rawName) {
+              clearTimeout(checkTimer);
+              if (!String(rawName).trim()) {
+                hide();
+                return;
+              }
+              checkTimer = setTimeout(function () { requestCheck(rawName); }, 180);
+            }
+
+            input.addEventListener('input', (event) => {
+              // React only to genuine typing; prefills announce themselves
+              // through the explicit name-prefilled event below.
+              if (!event.isTrusted) return;
+              scheduleCheck(input.value);
+            });
+
+            input.addEventListener('name-prefilled', (event) => {
+              clearTimeout(checkTimer);
+              const appliedName = event && event.detail ? String(event.detail.name || '') : '';
+              if (appliedName.trim()) {
+                checkTimer = setTimeout(function () { requestCheck(appliedName); }, 0);
+              } else {
+                hide();
+              }
+            });
+          }
+
+          document.querySelectorAll('input[data-name-suggest]').forEach(setupDuplicateWarning);
         })();
       </script>
     </main>
