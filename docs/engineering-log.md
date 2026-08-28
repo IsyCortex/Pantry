@@ -10,6 +10,11 @@ This log records implementation-phase engineering notes, deviations, and evidenc
 - Pantry release tags follow Semantic Versioning, and the corrected M0 release is `v0.1.2`.
 - Ticket-level implementation evidence continues to be recorded in the corresponding GitHub issues as the authoritative live technical record.
 
+## M5 — MVP verification and portfolio polish
+
+- Branch: `feature/m5`, created from `a4edf14` (post-`v0.5.0` `develop` tip) after the M4 release.
+- Owner decision (Option A): the M4 `v0.5.0` release initially shipped without a README `## Current status` update because the change was not staged on `feature/m4` before the release merge, and the published tag is immutable. The README status correction (M4 → `v0.5.0`) is therefore committed here on `feature/m5` so it rides into the next release without touching the published `v0.5.0` tag.
+
 ## M4 — Faster repeat entry and accessibility
 
 ### Ticket 4.1 — Name suggestions on repeat entry (manual batch intake)

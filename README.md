@@ -49,9 +49,9 @@ Architectural decisions that require trade-off records are maintained as individ
 
 ## Current status
 
-Milestone 3 is complete and released as `v0.4.0`. Expiration awareness and inventory navigation are accepted for the current development phase.
+Milestone 4 is complete and released as `v0.5.0`. Faster repeat entry and accessibility (name suggestions, duplicate warnings, and keyboard, mobile, and recovery refinements) are accepted for the current development phase.
 
-Earlier milestone releases: Milestone 2 `v0.3.0` (natural-language batch analysis), Milestone 1 `v0.2.0` (manual inventory and shared batch workflow), and Milestone 0 `v0.1.2` (foundational application architecture and analyzer contract).
+Earlier milestone releases: Milestone 3 `v0.4.0` (expiration awareness and inventory navigation), Milestone 2 `v0.3.0` (natural-language batch analysis), Milestone 1 `v0.2.0` (manual inventory and shared batch workflow), and Milestone 0 `v0.1.2` (foundational application architecture and analyzer contract).
 
 ## Local foundation setup
 
