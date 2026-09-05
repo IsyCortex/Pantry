@@ -2,6 +2,7 @@ const express = require('express');
 const { getActiveInventoryForDisplay, getConfirmedInventoryItem, updateConfirmedInventoryItem, markInventoryItemRemoved, filterInventoryItems, getNameSuggestions, getNameDuplicateWarnings } = require('../services/inventory-service');
 const { computeExpirationCounts } = require('../services/expiration-status-service');
 const { VALID_LOCATIONS, VALID_UNITS, VALID_DATE_TYPES } = require('../validation/intake-batch');
+const { toUserValidationMessages } = require('../validation/user-messages');
 
 const NOTICE_MESSAGES = {
   updated: 'Inventory item updated successfully.',
@@ -174,6 +175,8 @@ function createInventoryRouter({
       res.redirect('/inventory?notice=updated');
     } catch (error) {
       if (error.code === 'VALIDATION_FAILED') {
+        // Ticket 5.1 — translate technical validation tokens into user-facing
+        // messages on the edit form re-render.
         res.status(400).render('inventory-edit', {
           title: 'Edit inventory item',
           item: {
@@ -185,7 +188,7 @@ function createInventoryRouter({
             expirationDate: req.body.expirationDate,
             dateType: req.body.dateType
           },
-          errors: error.details,
+          errors: toUserValidationMessages(error.details),
           notice: null,
           locations: Array.from(VALID_LOCATIONS),
           units: Array.from(VALID_UNITS),

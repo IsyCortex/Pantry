@@ -15,6 +15,17 @@ This log records implementation-phase engineering notes, deviations, and evidenc
 - Branch: `feature/m5`, created from `a4edf14` (post-`v0.5.0` `develop` tip) after the M4 release.
 - Owner decision (Option A): the M4 `v0.5.0` release initially shipped without a README `## Current status` update because the change was not staged on `feature/m4` before the release merge, and the published tag is immutable. The README status correction (M4 → `v0.5.0`) is therefore committed here on `feature/m5` so it rides into the next release without touching the published `v0.5.0` tag.
 
+### Ticket 5.1 — Complete validation, accessibility, and error review
+
+- Issue #24 (milestone M5). Corrective review — no behavior changes beyond message/label/indicator corrections.
+- AC1 finding: top-level error lists on the manual editor, review page, and inventory-edit form rendered raw technical validation tokens (`rows[0].quantity must be a positive number when provided`). **Fix:** new `src/validation/user-messages.js` (`toUserValidationMessages`) translates `rows[N].field …` tokens AND the field-scoped `src/validation/inventory.js` messages into specific `Row N:` / plain-language messages, applied centrally in `renderManualBatch`, `sendBatchReview`, and the inventory-edit route. Pass-through keeps already-user-facing details unchanged.
+- AC2 finding: error paths were already safe (generic JSON 500; route-level safe pages/JSON; canonical `AI_INVALID_RESPONSE`/`AI_ANALYSIS_FAILED` on the NL path). No code change needed; regression tests now pin this.
+- AC3/AC4 findings: every control across all six rendered surfaces already carries a programmatic label (wrapping label, `for`/`id`, `aria-label`, or visible button text); status surfaces already pair glyph/text/border (`role="status"` notices, labelled overview cards, warning text blocks, badge glyph+label). No markup/CSS change needed; parser-based regression tests now pin this.
+- AC5: documented keyboard/focus review delivered as `docs/mvp-validation-accessibility-review.md`, recording the browser-verified 4.1–4.3 behavior (Tab order, Enter/Ctrl+Enter, combobox, focus-after-action, error autofocus, NL textarea recovery target).
+- AC6: new `tests/validation-accessibility-review.test.js` (8 tests: friendly messages on manual/review/inventory-edit, no `rows[` leak, generic 500 JSON w/o internals, generic suggestion failure, accessible-name scan across five pages, color-independence scans, error/warning text states).
+- Corrective test fixes: two `inventory.route.test.js` tests hardcoded August-2026 dates, which drifted stale as the wall clock moved on (items meant to be `expiring_soon` became `expired`) — now derived from the app's `todayInZone('Europe/Berlin')`; two `intake-batch.route.test.js` assertions updated from the old raw token to the user-facing message.
+- Verification at final ticket HEAD: focused suites 45/45 (intake-batch + inventory.route + validation-accessibility); full serial suite `node --test --test-concurrency=1` → **195/195 pass, 0 fail** (baseline 187 → +8).
+
 ## M4 — Faster repeat entry and accessibility
 
 ### Ticket 4.1 — Name suggestions on repeat entry (manual batch intake)

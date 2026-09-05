@@ -2,9 +2,21 @@
 const assert = require('node:assert/strict');
 const { pool, resetAllTables } = require('./helpers/test-db');
 const { createApp } = require('../src/app');
+const { todayInZone } = require('../src/services/app-date');
 
 async function resetInventoryTable() {
   await resetAllTables();
+}
+
+// Expiration status derives from the application's dedicated calendar day
+// (Europe/Berlin, Ticket 3.1). Tests that assert statuses must derive their
+// fixtures from the same "today" so they never drift stale with the wall
+// clock (Ticket 5.1 corrective fix).
+const today = () => todayInZone('Europe/Berlin');
+
+function addDays(iso, days) {
+  const [year, month, day] = iso.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
 }
 
 async function insertInventoryItem(item) {
@@ -319,10 +331,11 @@ test('inventory overview renders per-item fields and primary CTA without obsolet
 
 test('inventory defaults to expiration-prioritized order with accessible badges', async () => {
   await resetInventoryTable();
+  const expiry = today();
   // Inserted deliberately out of priority order; ids alone must not decide.
-  await insertInventoryItem({ name: 'Zucchini', quantity: 1, unit: 'piece', location: 'fridge', expirationDate: '2026-09-20', dateType: 'best_before', lifecycleStatus: 'active' });
-  await insertInventoryItem({ name: 'Yoghurt', quantity: 2, unit: 'package', location: 'fridge', expirationDate: '2026-08-27', dateType: 'use_by', lifecycleStatus: 'active' });
-  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: 'carton', location: 'fridge', expirationDate: '2026-08-20', dateType: 'use_by', lifecycleStatus: 'active' });
+  await insertInventoryItem({ name: 'Zucchini', quantity: 1, unit: 'piece', location: 'fridge', expirationDate: addDays(expiry, 30), dateType: 'best_before', lifecycleStatus: 'active' });
+  await insertInventoryItem({ name: 'Yoghurt', quantity: 2, unit: 'package', location: 'fridge', expirationDate: addDays(expiry, 3), dateType: 'use_by', lifecycleStatus: 'active' });
+  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: 'carton', location: 'fridge', expirationDate: addDays(expiry, -1), dateType: 'use_by', lifecycleStatus: 'active' });
   await insertInventoryItem({ name: 'Flour', quantity: 1, unit: 'kg', location: 'pantry', expirationDate: null, dateType: null, lifecycleStatus: 'active' });
 
   const app = createApp();
@@ -515,9 +528,10 @@ function countInventoryItems(body) {
 
 test('expiration overview shows immediate counts that match filtered inventory results', async () => {
   await resetInventoryTable();
-  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: 'carton', location: 'fridge', expirationDate: '2026-08-20', dateType: 'use_by' }); // expired
-  await insertInventoryItem({ name: 'Yoghurt', quantity: 2, unit: 'package', location: 'fridge', expirationDate: '2026-08-29', dateType: 'best_before' }); // expiring soon (day 3)
-  await insertInventoryItem({ name: 'Cheese', quantity: 1, unit: 'piece', location: 'freezer', expirationDate: '2026-12-01', dateType: 'best_before' }); // later
+  const expiry = today();
+  await insertInventoryItem({ name: 'Milk', quantity: 1, unit: 'carton', location: 'fridge', expirationDate: addDays(expiry, -5), dateType: 'use_by' }); // expired
+  await insertInventoryItem({ name: 'Yoghurt', quantity: 2, unit: 'package', location: 'fridge', expirationDate: addDays(expiry, 3), dateType: 'best_before' }); // expiring soon (day 3)
+  await insertInventoryItem({ name: 'Cheese', quantity: 1, unit: 'piece', location: 'freezer', expirationDate: addDays(expiry, 60), dateType: 'best_before' }); // later
   await insertInventoryItem({ name: 'Flour', quantity: 1, unit: 'kg', location: 'pantry', expirationDate: null, dateType: null }); // no_date
 
   const app = createApp();

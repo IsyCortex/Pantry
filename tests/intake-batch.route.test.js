@@ -56,7 +56,9 @@ test('POST /batches/manual preserves validation errors and entered values', asyn
     const body = await response.text();
     assert.equal(response.status, 400);
     assert.match(body, /Validation errors/);
-    assert.match(body, /quantity must be a positive number/);
+    // Ticket 5.1 — validation messages are user-facing; the technical
+    // "quantity must be a positive number" token is no longer rendered.
+    assert.match(body, /Row 1: Quantity must be a number greater than 0\./);
     assert.match(body, /value="-1"/);
   } finally {
     server.close();
@@ -423,7 +425,8 @@ test('direct save re-renders the editor with validation errors and preserved val
     const body = await response.text();
     assert.equal(response.status, 400);
     assert.match(body, /Validation errors/);
-    assert.match(body, /quantity must be a positive number/);
+    // Ticket 5.1 — validation messages are user-facing.
+    assert.match(body, /Row 1: Quantity must be a number greater than 0\./);
     assert.match(body, /value="-1"/);
 
     const inventoryCount = await pool.query('SELECT COUNT(*)::int AS count FROM inventory_items');

@@ -11,6 +11,7 @@ const { analyzeAndCreateReviewBatch } = require('../services/natural-language-in
 const { getActiveInventoryForDisplay } = require('../services/inventory-service');
 const { findDraftRowDuplicates } = require('../services/duplicate-detection-service');
 const { VALID_LOCATIONS, VALID_UNITS, VALID_DATE_TYPES } = require('../validation/intake-batch');
+const { toUserValidationMessages } = require('../validation/user-messages');
 
 function createEmptyRow(location = '') {
   return {
@@ -121,12 +122,16 @@ function createIntakeBatchRouter(options = {}) {
       console.error(error.stack || error);
       warnings = rows.map(() => []);
     }
+    // Ticket 5.1 — validation details are technical tokens ("rows[0]...");
+    // translate them into user-facing messages so the editor never shows
+    // internal field names or developer jargon.
+    const userErrors = toUserValidationMessages(errors);
     res.status(status).render('manual-batch', {
       title: 'Manual intake batch',
       batchId,
       rows: rows.map((row, index) => ({ ...row, duplicateWarnings: warnings[index] || [] })),
       defaultLocation,
-      errors,
+      errors: userErrors,
       notice,
       focusRow,
       locations: Array.from(VALID_LOCATIONS),
@@ -145,6 +150,10 @@ function createIntakeBatchRouter(options = {}) {
   // without combining quantities or dates.
   async function sendBatchReview(res, locals, status = 200) {
     const rows = Array.isArray(locals.rows) ? locals.rows : [];
+    // Ticket 5.1 — translate technical validation tokens into user-facing
+    // messages on every review re-render (GET, saved-corrections,
+    // validation-error, confirmation-error paths all flow through here).
+    const userErrors = toUserValidationMessages(locals.errors || []);
     let warnings;
     try {
       const activeItems = await activeInventoryLoader();
@@ -155,6 +164,7 @@ function createIntakeBatchRouter(options = {}) {
     }
     res.status(status).render('batch-review', {
       ...locals,
+      errors: userErrors,
       rows: rows.map((row, index) => ({ ...row, duplicateWarnings: warnings[index] || [] }))
     });
   }
