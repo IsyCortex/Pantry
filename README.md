@@ -2,6 +2,8 @@
 
 Pantry is a local-first reference project for household food inventory management and food-waste reduction. It helps a household record food with minimal friction, understand what is currently stored in the pantry, fridge, and freezer, and identify items that should be used soon.
 
+This is a work in progress. The project is actively developed milestone by milestone as a reference implementation, and its features, architecture, and documentation continue to evolve.
+
 The MVP deliberately concentrates on inventory visibility and expiration awareness. It does not include accounts, recipes, shopping recommendations, meal planning, diets, nutrition, or retailer integrations.
 
 ## Primary workflow
@@ -49,7 +51,7 @@ Architectural decisions that require trade-off records are maintained as individ
 
 ## Current status
 
-Milestone 4 is complete and released as `v0.5.0`. Faster repeat entry and accessibility (name suggestions, duplicate warnings, and keyboard, mobile, and recovery refinements) are accepted for the current development phase.
+Pantry is a reference project that is a work in progress and not a finished product. Milestone 4 is complete and released as `v0.5.0`. Faster repeat entry and accessibility (name suggestions, duplicate warnings, and keyboard, mobile, and recovery refinements) are accepted for the current development phase.
 
 Earlier milestone releases: Milestone 3 `v0.4.0` (expiration awareness and inventory navigation), Milestone 2 `v0.3.0` (natural-language batch analysis), Milestone 1 `v0.2.0` (manual inventory and shared batch workflow), and Milestone 0 `v0.1.2` (foundational application architecture and analyzer contract).
 
