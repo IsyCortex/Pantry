@@ -203,3 +203,11 @@ A future per-account/household model will supply the household timezone.
 - Milestone 1 can build on a documented and runnable foundation without reopening M0 scope decisions.
 - Ticket 2.3 must treat `docs/analyzer-contract.md` as the authoritative contract source for executable validation.
 - Release execution for M0 requires explicit approval of the initial version/tag convention before Gitflow integration proceeds.
+
+## License
+
+Copyright © 2026 Marc Preußner. All rights reserved.
+
+This repository is publicly available for reference and portfolio purposes. The source code is not open source and may not be copied, modified, distributed, or used to create derivative works except as permitted by applicable law.
+
+See the [LICENSE](LICENSE) file for details.
