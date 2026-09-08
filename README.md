@@ -1,10 +1,22 @@
 # Pantry
 
-Pantry is a local-first reference project for household food inventory management and food-waste reduction. It helps a household record food with minimal friction, understand what is currently stored in the pantry, fridge, and freezer, and identify items that should be used soon.
+Pantry is an actively developed reference project for household food inventory management and food-waste reduction: a local-first web application that helps a household know what food is at home, where it is stored, and what should be used soon. Its current state is publicly traceable — milestones are tracked as GitHub issues and milestones, ticket evidence lives in the repository, and every completed milestone ends in a published release.
+
+## Problem
+
+Food is bought, stored across pantry, fridge, and freezer, and then forgotten. Households lose track of what they own, where it is, and how long it keeps — so food expires before it is used.
+
+> Know what food is at home, where it is stored, and what should be used soon.
+
+## User and product goal
+
+Pantry gives a household a simple, low-friction overview of food stored at home and makes food that is expired or approaching its date visible early enough to be used.
+
+The product represents one household without accounts or permissions. A representative scenario is a family returning from a large weekly grocery trip and entering many items in one session. The architecture avoids unnecessary obstacles to later household accounts, but the current milestone scope does not implement them.
 
 The MVP deliberately concentrates on inventory visibility and expiration awareness. It does not include accounts, recipes, shopping recommendations, meal planning, diets, nutrition, or retailer integrations.
 
-## Primary workflow
+## Core workflow
 
 1. Enter groceries manually or describe a batch in natural language.
 2. Manually entered batches are saved straight to the active inventory in one step.
@@ -14,46 +26,29 @@ The MVP deliberately concentrates on inventory visibility and expiration awarene
 
 No AI-generated proposal becomes inventory without explicit human confirmation.
 
-## Documentation
+## Current state
 
-| Document | Purpose |
-| --- | --- |
-| [Project plan](PROJECT_PLAN.md) | Milestones, tickets, acceptance criteria, and technical progress checklists |
-| [Development workflow](docs/development-workflow.md) | Operational workflow: ownership, ticket and blocker lifecycles, technical-checklist ownership, testing, Gitflow, evidence, and context loading |
-| [Product scope](docs/product-scope.md) | Product goal, users, workflows, MVP boundary, success criteria, and scope acceptance |
-| [Domain model](docs/domain-model.md) | Domain language, entities, lifecycle rules, and validation invariants |
-| [Architecture](docs/architecture.md) | Application structure, technical boundaries, persistence, testing strategy, and release workflow constraints |
-| [Input pipeline](docs/input-pipeline.md) | Manual and AI-assisted batch ingestion, review boundary, and future voice/receipt adapters |
-| [Engineering log](docs/engineering-log.md) | Implementation-phase engineering notes, deviations, and evidence summaries |
+Pantry is an actively developed reference project. It is work in progress by design: development proceeds milestone by milestone, and the current state is publicly traceable through the milestone issues, the in-repository engineering log, and the published releases.
 
-## Documentation strategy
+Milestone 4 is complete and released as `v0.5.0`. Faster repeat entry and accessibility (name suggestions, duplicate warnings, and keyboard, mobile, and recovery refinements) are accepted for the current development phase. Milestone 5 — MVP verification and portfolio polish — is underway.
 
-The documentation is intentionally split rather than maintained as one large file:
+Earlier milestone releases: Milestone 3 `v0.4.0` (expiration awareness and inventory navigation), Milestone 2 `v0.3.0` (natural-language batch analysis), Milestone 1 `v0.2.0` (manual inventory and shared batch workflow), and Milestone 0 `v0.1.2` (foundational application architecture and analyzer contract).
 
-- The project plan will change frequently as tickets are completed and refined.
-- Product scope should remain readable without implementation details.
-- Domain rules need a stable source of truth shared by the UI, services, and tests.
-- Architecture decisions should be reviewable independently from product planning.
-- The input pipeline deserves a dedicated document because it is the main extensibility and AI-safety boundary.
+## Product visualization
 
-Architectural decisions that require trade-off records are maintained as individual ADRs under `docs/adr/`. The engineering log is maintained under `docs/engineering-log.md` and should be updated alongside ticket progress.
+![Pantry product visualization](Pantry%20Visualization.png)
 
-## Delivery workflow
+## Product principles
 
-- Ticket execution follows the operational workflow documented in [`docs/development-workflow.md`](docs/development-workflow.md#ticket-workflow-states).
-- The GitHub issue is the authoritative live technical checklist; technical items are updated only after implementation evidence is committed and pushed.
-- The implementation partner maintains only `Technical plan and progress` checkboxes and never checks acceptance criteria without explicit instruction.
-- Formally tracked blockers follow the blocker lifecycle documented in [`docs/development-workflow.md`](docs/development-workflow.md#blocker-lifecycle), with detailed incident records stored under `docs/blockers/`.
-- Product acceptance and movement to `Done` remain the project owner's responsibility.
-- Each milestone is treated as a release and follows the Gitflow release responsibilities documented in [`docs/development-workflow.md`](docs/development-workflow.md#release-and-gitflow-responsibilities).
+- **Low friction.** Only name and location are required for a confirmed item; every other field stays optional. Batch entry is keyboard-first and never loses valid work because one row is invalid.
+- **Human-controlled automation.** Automation creates draft suggestions. The user decides what becomes inventory and can modify or reject every proposed item.
+- **Missing is better than invented.** Unknown dates, quantities, units, and locations remain missing. The system does not manufacture plausible values.
+- **Explainable attention.** The interface presents concrete reasons such as `missing_location` or `ambiguous_date`, not an unreliable numerical AI-confidence score.
+- **One inventory truth.** All input methods converge on the same draft-item structure and confirmation service. Confirmed inventory is independent of the input provider.
 
-## Current status
+## Technical details
 
-Milestone 3 is complete and released as `v0.4.0`. Expiration awareness and inventory navigation are accepted for the current development phase.
-
-Earlier milestone releases: Milestone 2 `v0.3.0` (natural-language batch analysis), Milestone 1 `v0.2.0` (manual inventory and shared batch workflow), and Milestone 0 `v0.1.2` (foundational application architecture and analyzer contract).
-
-## Local foundation setup
+### Local foundation setup
 
 ### Prerequisites
 
@@ -137,9 +132,9 @@ npm test
 
 DB-backed tests currently share the repository-controlled test database and use serialized execution to avoid cross-file fixture interference.
 
-The foundation intentionally excludes inventory, batch intake, natural-language analysis, and other later feature workflows.
+The automated suite covers all delivered milestone workflows — inventory, batch intake, natural-language analysis, expiration awareness, and inventory navigation — and never requires a running language model.
 
-## Local language-model analyzer (optional)
+### Local language-model analyzer (optional)
 
 Natural-language intake works out of the box with the built-in deterministic `fake` analyzer (the default). To analyze descriptions with a locally running language model instead, Pantry speaks the Ollama `/api/generate` protocol:
 
@@ -163,7 +158,7 @@ Notes:
 - Provider, timeout, and parsing failures degrade to the safe recoverable analysis state; the submitted text is preserved for retry or manual continuation, and raw provider details never reach the user.
 - Automated tests never require a running model: they use stubbed HTTP servers and the deterministic fake provider.
 
-## Inventory expiration status
+### Inventory expiration status
 
 Pantry derives an expiration status for each dated inventory item: `expired`, `expiring soon`, `later`, or `no date`. The reference day is the calendar date in a dedicated timezone (separate from the analyzer timezone), and the `expiring_soon` threshold is a fixed 3-day window. Both are environment settings (see `.env.example`):
 
@@ -176,33 +171,40 @@ EXPIRATION_SOON_DAYS=3
 
 A future per-account/household model will supply the household timezone.
 
-## M0 implementation record
+## Further documentation
 
-### Delivered across Tickets 0.1–0.5
+### Documentation
 
-- Ticket 0.1 documented the MVP scope, workflows, exclusions, and the draft-versus-confirmed inventory boundary.
-- Ticket 0.2 documented the Pantry domain model, lifecycle rules, expiration semantics, and review-oriented invariants.
-- Ticket 0.3 documented the application architecture and recorded the core accepted trade-offs in ADRs.
-- Ticket 0.4 established a single analyzer contract source, representative JSON fixtures, and the specification boundary between Ticket 0.4 and Ticket 2.3.
-- Ticket 0.5 delivered a minimal runnable foundation with application bootstrap, repository-controlled PostgreSQL configuration, a migration mechanism, health checks, deterministic tests, and documented local setup.
+| Document | Purpose |
+| --- | --- |
+| [Project plan](PROJECT_PLAN.md) | Milestones, tickets, acceptance criteria, and technical progress checklists |
+| [Development workflow](docs/development-workflow.md) | Operational workflow: ownership, ticket and blocker lifecycles, technical-checklist ownership, testing, Gitflow, evidence, and context loading |
+| [Product scope](docs/product-scope.md) | Product goal, users, workflows, MVP boundary, success criteria, and scope acceptance |
+| [Domain model](docs/domain-model.md) | Domain language, entities, lifecycle rules, and validation invariants |
+| [Architecture](docs/architecture.md) | Application structure, technical boundaries, persistence, testing strategy, and release workflow constraints |
+| [Input pipeline](docs/input-pipeline.md) | Manual and AI-assisted batch ingestion, review boundary, and future voice/receipt adapters |
+| [Engineering log](docs/engineering-log.md) | Implementation-phase engineering notes, deviations, and evidence summaries |
 
-### Material differences from the original milestone plan
+### Documentation strategy
 
-- The M0 architecture and analyzer-contract work was delivered primarily as authoritative specification and ADR evidence rather than executable feature code.
-- Ticket 0.4 clarified the separation between analyzer output proposals and application-owned canonical draft items.
-- Ticket 0.4 specified proposal-validation rules, while executable enforcement was deliberately deferred to Ticket 2.3.
-- Ticket 0.5 established migration infrastructure without introducing later domain tables solely to prove the foundation.
+The documentation is intentionally split rather than maintained as one large file:
 
-### Deliberate deferrals
+- The project plan changes frequently as tickets are completed and refined.
+- Product scope should remain readable without implementation details.
+- Domain rules need a stable source of truth shared by the UI, services, and tests.
+- Architecture decisions should be reviewable independently from product planning.
+- The input pipeline deserves a dedicated document because it is the main extensibility and AI-safety boundary.
 
-- Executable analyzer-response enforcement and error hardening remain in Ticket 2.3.
-- Inventory persistence tables and feature workflows remain for Milestone 1 tickets.
+Architectural decisions that require trade-off records are maintained as individual ADRs under `docs/adr/`. The engineering log is maintained under `docs/engineering-log.md` and is updated alongside ticket progress.
 
-### Consequences for subsequent work
+### Delivery workflow
 
-- Milestone 1 can build on a documented and runnable foundation without reopening M0 scope decisions.
-- Ticket 2.3 must treat `docs/analyzer-contract.md` as the authoritative contract source for executable validation.
-- Release execution for M0 requires explicit approval of the initial version/tag convention before Gitflow integration proceeds.
+- Ticket execution follows the operational workflow documented in [`docs/development-workflow.md`](docs/development-workflow.md#ticket-workflow-states).
+- The GitHub issue is the authoritative live technical checklist; technical items are updated only after implementation evidence is committed and pushed.
+- The implementation partner maintains only `Technical plan and progress` checkboxes and never checks acceptance criteria without explicit instruction.
+- Formally tracked blockers follow the blocker lifecycle documented in [`docs/development-workflow.md`](docs/development-workflow.md#blocker-lifecycle), with detailed incident records stored under `docs/blockers/`.
+- Product acceptance and movement to `Done` remain the project owner's responsibility.
+- Each milestone is treated as a release and follows the Gitflow release responsibilities documented in [`docs/development-workflow.md`](docs/development-workflow.md#release-and-gitflow-responsibilities).
 
 ## License
 
