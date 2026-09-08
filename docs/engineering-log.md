@@ -174,3 +174,33 @@ Milestone 2 — Natural-language batch analysis — completed. The milestone's o
 - Browser walkthrough (`docs/ticket-4-3-browser-walkthrough.md`; Chromium 151.0.7922.173 headless/raw CDP, ~1280x900): **9/9 PASS** — exact/plural/typo names warn live before saving, Buttermilk and `used_up` history stay silent, editing away a match clears the warning, a 4.1 name-suggestion pick re-triggers it, Save-to-inventory stays enabled, and saving creates a separate entry (inventory 1->2) with the original Milk (qty 2, exp 2026-09-10) untouched.
 - Follow-up — acceptance round 2 (three criteria had been marked *partially met*: keyboard, predictable focus, narrow mobile). Closed the gaps: (1) `.row-actions` moved after `.field-grid` in the manual editor DOM so keyboard **tab order** reaches each row's inputs before its action buttons, with CSS `.row-actions { order:-1 }` keeping actions visually on top — regression-guarded in `tests/manual-batch.route.test.js`; (2) added a **Ctrl+Enter** accelerator (with button `title`) that submits the editor straight to inventory, giving full keyboard completion; (3) `@media (max-width:36rem)` now sets `min-height:2.5rem` touch targets on editor/toolbar controls plus `max-width:100%` suggestion and `word-break` warning overflow guards. Browser re-verified (Chromium 151.0.7922.173, 1280x900 + 320px): Tab Name→Quantity, validation-error keeps the offending Name focused, Ctrl+Enter → `/inventory?notice=confirmed&created=1` with a separate `Milk` persisted (count 2→3, id-1 untouched), no 320px overflow, 40px touch targets — **6/6 PASS**; see `docs/ticket-4-3-browser-walkthrough.md` follow-up section. Full serial suite **186/186 pass**.
 - Follow-up — acceptance round 3 (predictable focus and narrow-mobile had again been marked *partially met*). (1) Browser-verified creation/deletion focus: add-row, duplicate-row, and remove-row all autofocus the correct Name field. (2) Added a deliberate natural-language-failure focus target: the preserved `rawText` textarea now autofocuses on the 400/422 re-render (commit `cc7deef`, regression-tested). (3) Extended narrow-mobile verification to the NL form, AI review page, and inventory — all no-overflow at 320px. Round-3 browser walk: **7/7 PASS**; full serial **187/187**; focused **30/30**. See `docs/ticket-4-3-browser-walkthrough.md` round-3 section.
+
+## M0 implementation record (historical)
+
+Relocated from the README so the milestone evidence stays in the engineering log. Completed since this record was written: executable analyzer enforcement and error hardening (Ticket 2.3, delivered in Milestone 2), inventory persistence and feature workflows (Milestone 1, released `v0.2.0`), and the M0 release itself (`v0.1.2` final).
+
+### Delivered across Tickets 0.1–0.5
+
+- Ticket 0.1 documented the MVP scope, workflows, exclusions, and the draft-versus-confirmed inventory boundary.
+- Ticket 0.2 documented the Pantry domain model, lifecycle rules, expiration semantics, and review-oriented invariants.
+- Ticket 0.3 documented the application architecture and recorded the core accepted trade-offs in ADRs.
+- Ticket 0.4 established a single analyzer contract source, representative JSON fixtures, and the specification boundary between Ticket 0.4 and Ticket 2.3.
+- Ticket 0.5 delivered a minimal runnable foundation with application bootstrap, repository-controlled PostgreSQL configuration, a migration mechanism, health checks, deterministic tests, and documented local setup.
+
+### Material differences from the original milestone plan
+
+- The M0 architecture and analyzer-contract work was delivered primarily as authoritative specification and ADR evidence rather than executable feature code.
+- Ticket 0.4 clarified the separation between analyzer output proposals and application-owned canonical draft items.
+- Ticket 0.4 specified proposal-validation rules, while executable enforcement was deliberately deferred to Ticket 2.3.
+- Ticket 0.5 established migration infrastructure without introducing later domain tables solely to prove the foundation.
+
+### Deliberate deferrals
+
+- Executable analyzer-response enforcement and error hardening remain in Ticket 2.3.
+- Inventory persistence tables and feature workflows remain for Milestone 1 tickets.
+
+### Consequences for subsequent work
+
+- Milestone 1 can build on a documented and runnable foundation without reopening M0 scope decisions.
+- Ticket 2.3 must treat `docs/analyzer-contract.md` as the authoritative contract source for executable validation.
+- Release execution for M0 requires explicit approval of the initial version/tag convention before Gitflow integration proceeds.
